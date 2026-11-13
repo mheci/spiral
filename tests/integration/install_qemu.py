@@ -148,7 +148,7 @@ def main() -> int:
         root_fs = shell("findmnt -no FSTYPE /").strip()
         root_options = shell("findmnt -no OPTIONS /").strip()
         system_state = shell("systemctl is-system-running || true").strip()
-        swap = shell("swapon --show").strip()
+        swap = sudo("swapon --show").strip()
         results["checks"].update(
             {
                 "hostname": hostname,
@@ -195,6 +195,7 @@ def main() -> int:
         print(f"install test failed: {exc}", file=sys.stderr)
         print(tail, file=sys.stderr)
         results["error"] = str(exc)
+        print(json.dumps(results, indent=2))
         result_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
         return 1
     finally:

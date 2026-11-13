@@ -358,6 +358,9 @@ class Installer:
                 )
         for argv in commands.swapfile_commands(self.plan, str(self.target)):
             self._run(argv, timeout=300)
+        tmp_path = self.target / "tmp"
+        if tmp_path.is_dir():
+            tmp_path.chmod(0o1777)
 
     def phase_base(self) -> None:
         self._run(
@@ -366,6 +369,8 @@ class Installer:
         )
         if not (self.target / "etc").is_dir():
             raise InstallError("debootstrap finished without creating /etc")
+        (self.target / "tmp").mkdir(mode=0o1777, exist_ok=True)
+        (self.target / "tmp").chmod(0o1777)
         (self.target / "etc" / "apt").mkdir(parents=True, exist_ok=True)
         self._write(
             "etc/apt/sources.list",
