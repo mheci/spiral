@@ -15,6 +15,8 @@ USES_RE = re.compile(r"uses:\s*([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)@([0-9a-f]{40}
 
 
 def api(url: str, token: str) -> dict:
+    if not url.startswith("https://api.github.com/"):
+        raise ValueError("unexpected API URL")
     request = urllib.request.Request(
         url,
         headers={
@@ -23,7 +25,7 @@ def api(url: str, token: str) -> dict:
             "User-Agent": "Spiral-action-pin-check",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    with urllib.request.urlopen(request, timeout=30) as response:  # nosec B310 - fixed API URL
         return json.loads(response.read().decode("utf-8"))
 
 

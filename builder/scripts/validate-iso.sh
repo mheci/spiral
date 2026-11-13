@@ -48,7 +48,7 @@ if ! grep -qiE "UEFI|EFI" "$TMP/eltorito.txt"; then
     echo "ISO has no UEFI boot entry" >&2
     cat "$TMP/eltorito.txt" >&2
     exit 1
-}
+fi
 
 xorriso -osirrox on -indev "$ISO" -extract /live "$TMP/live" >/dev/null 2>&1
 for file in vmlinuz initrd.img filesystem.squashfs; do

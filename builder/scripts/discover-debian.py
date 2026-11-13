@@ -33,8 +33,10 @@ def parse_inrelease(text: str) -> dict[str, str]:
 
 
 def download(url: str) -> str:
+    if not url.startswith("https://"):
+        raise ValueError("the release URL must use HTTPS")
     request = urllib.request.Request(url, headers={"User-Agent": "Spiral-ISO-builder/0.1"})
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with urllib.request.urlopen(request, timeout=60) as response:  # nosec B310 - fixed HTTPS URL
         if response.status != 200:
             raise ValueError(f"HTTP {response.status} for {url}")
         payload = response.read(MAX_BYTES + 1)

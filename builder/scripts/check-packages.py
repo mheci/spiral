@@ -15,8 +15,10 @@ CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*$")
 
 
 def fetch(url: str, limit: int = 200 * 1024 * 1024) -> bytes:
+    if not url.startswith("https://"):
+        raise RuntimeError("package indexes must be fetched over HTTPS")
     request = urllib.request.Request(url, headers={"User-Agent": "Spiral-package-check/0.1"})
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=120) as response:  # nosec B310 - fixed HTTPS URL
         if response.status != 200:
             raise RuntimeError(f"HTTP {response.status} for {url}")
         data = response.read(limit + 1)
