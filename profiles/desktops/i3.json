@@ -3,7 +3,7 @@
   "kind": "window-manager",
   "label": "i3",
   "description": "Tiling X11 window manager with LightDM and a terminal.",
-  "packages": ["i3-wm", "i3status", "i3lock", "dmenu", "xterm"],
+  "packages": ["i3-wm", "i3status", "i3lock", "rofi", "xterm"],
   "display_manager": "lightdm",
   "session": "i3",
   "status": "stable",

@@ -6,6 +6,7 @@
   "packages": ["task-budgie-desktop"],
   "display_manager": "lightdm",
   "session": "budgie",
-  "status": "stable",
-  "notes": "Availability is verified against the selected Debian release."
+  "status": "experimental",
+  "requires_packages_available": ["task-budgie-desktop"],
+  "notes": "Debian Stable does not currently ship the Budgie task. The option stays visible but is refused unless the selected release provides the package."
 }

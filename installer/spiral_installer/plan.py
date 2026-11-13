@@ -214,8 +214,8 @@ class PlanBuilder:
             raise ValidationError("snapshots require BTRFS")
         if maintenance and filesystem.kind != "btrfs":
             raise ValidationError("BTRFS maintenance requires BTRFS")
-        if swap_strategy is SwapStrategy.FILE and not filesystem.supports_swap_file:
-            raise ValidationError(f"{filesystem.label} does not support a swapfile")
+        if swap_strategy is SwapStrategy.FILE and filesystem.kind != "btrfs":
+            raise ValidationError("the implemented swapfile path requires BTRFS")
 
         partitions = self._partitions(
             disk=disk,

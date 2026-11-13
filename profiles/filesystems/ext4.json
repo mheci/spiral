@@ -5,7 +5,7 @@
   "tools": ["e2fsprogs"],
   "supports_encryption": true,
   "supports_swap_partition": true,
-  "supports_swap_file": true,
+  "supports_swap_file": false,
   "default_layout": null,
   "layouts": {}
 }
