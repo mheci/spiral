@@ -108,6 +108,7 @@ jobs:
         working-directory: dist
         env:
           GH_TOKEN: ${{ github.token }}
+          FORCE_PUBLISH: ${{ inputs.force_publish }}
         run: |
           set +e
           PREV_TAG=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName')
@@ -115,10 +116,10 @@ jobs:
             mkdir -p previous
             gh release download "$PREV_TAG" --pattern build-manifest.json --dir previous || true
           fi
-          python3 ../builder/scripts/should_publish.py \
-            --current build-manifest.json \
-            ${PREV_TAG:+--previous previous/build-manifest.json} \
-            ${{ inputs.force_publish && '--force' || '' }}
+          args=(--current build-manifest.json)
+          if [ -n "$PREV_TAG" ]; then args+=(--previous previous/build-manifest.json); fi
+          if [ "$FORCE_PUBLISH" = "true" ]; then args+=(--force); fi
+          python3 ../builder/scripts/should_publish.py "${args[@]}"
           code=$?
           if [ "$code" -ne 0 ] && [ "$code" -ne 10 ]; then
             echo "update comparison failed with $code" >&2

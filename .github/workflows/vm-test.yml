@@ -39,7 +39,8 @@ jobs:
       - name: Download ISO artifact
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run download "${{ steps.run.outputs.id }}" --name spiral-iso --dir dist
+          RUN_ID: ${{ steps.run.outputs.id }}
+        run: gh run download "$RUN_ID" --name spiral-iso --dir dist
       - name: UEFI and BIOS boot smoke tests
         run: |
           ISO=$(find dist -maxdepth 1 -name '*.iso' | head -n 1)

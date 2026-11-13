@@ -3,6 +3,9 @@ set -eu
 
 echo "Spiral: configuring live environment" >&2
 
+# No host or bake-time user SSH material belongs on a public live image.
+rm -rf /root/.ssh /home/*/.ssh
+
 python3 -m compileall -q /usr/lib/spiral-installer
 PYTHONPATH=/usr/lib/spiral-installer python3 - <<'PY'
 import json
