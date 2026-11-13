@@ -20,4 +20,3 @@ jobs:
     with:
       publish: true
       force_publish: false
-    secrets: inherit
