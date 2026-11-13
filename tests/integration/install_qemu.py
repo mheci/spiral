@@ -55,7 +55,7 @@ def main() -> int:
     with disk.open("wb") as handle:
         handle.truncate(25 * 1024**3)
 
-    command = [
+    common = [
         "qemu-system-x86_64",
         "-m", "4096",
         "-smp", "2",
@@ -65,10 +65,9 @@ def main() -> int:
         "-serial", "stdio",
         "-drive", f"file={disk},if=none,format=raw,id=target",
         "-device", "virtio-blk-pci,drive=target,serial=SPIRALTEST",
-        "-cdrom", str(Path(args.iso).resolve()),
-        "-boot", "order=c,once=d",
         "-nic", "user,model=virtio-net-pci",
     ]
+    variables = None
     if args.firmware == "uefi":
         candidates = (
             (Path("/usr/share/OVMF/OVMF_CODE_4M.fd"), Path("/usr/share/OVMF/OVMF_VARS_4M.fd")),
@@ -76,28 +75,39 @@ def main() -> int:
             (Path("/usr/share/ovmf/OVMF.fd"), Path("/usr/share/ovmf/OVMF_VARS.fd")),
         )
         code, vars_source = next(
-            ((code, variables) for code, variables in candidates if code.is_file() and variables.is_file()),
+            ((code, vars_file) for code, vars_file in candidates if code.is_file() and vars_file.is_file()),
             (None, None),
         )
         if code is None:
             raise RuntimeError("OVMF firmware was not found")
         variables = workdir / "OVMF_VARS.fd"
         shutil.copyfile(vars_source, variables)
-        command += [
+        common += [
             "-drive", f"if=pflash,format=raw,readonly=on,file={code}",
             "-drive", f"if=pflash,format=raw,file={variables}",
         ]
     if os.access("/dev/kvm", os.R_OK | os.W_OK):
-        command += ["-enable-kvm", "-cpu", "host"]
+        common += ["-enable-kvm", "-cpu", "host"]
+
+    def start_qemu(with_iso: bool) -> pexpect.spawn:
+        command = list(common)
+        if with_iso:
+            command += [
+                "-cdrom", str(Path(args.iso).resolve()),
+                "-boot", "order=c,once=d",
+            ]
+        else:
+            command += ["-boot", "order=c"]
+        return pexpect.spawn(
+            command[0],
+            command[1:],
+            encoding="utf-8",
+            codec_errors="replace",
+            timeout=args.boot_timeout,
+        )
 
     serial = serial_path.open("w", encoding="utf-8", errors="replace")
-    child = pexpect.spawn(
-        command[0],
-        command[1:],
-        encoding="utf-8",
-        codec_errors="replace",
-        timeout=args.boot_timeout,
-    )
+    child = start_qemu(with_iso=True)
     child.logfile_read = serial
     results: dict = {"filesystem": args.filesystem, "checks": {}, "log": str(serial_path)}
     try:
@@ -142,7 +152,16 @@ def main() -> int:
         child.expect(LIVE_PROMPT, timeout=120)
         results["installation_complete"] = True
 
-        child.sendline("sudo reboot")
+        if args.firmware == "uefi":
+            child.sendline("sudo poweroff")
+            child.expect(pexpect.EOF, timeout=180)
+            child.close(force=True)
+            serial.close()
+            serial = serial_path.open("a", encoding="utf-8", errors="replace")
+            child = start_qemu(with_iso=False)
+            child.logfile_read = serial
+        else:
+            child.sendline("sudo reboot")
         if args.luks:
             unlocked = child.expect(
                 [r"(?i)(please unlock disk|enter passphrase)", "spiral-test login:"],

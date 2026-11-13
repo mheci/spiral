@@ -30,12 +30,13 @@ class CommandRunner:
         stdin_text: Optional[str] = None,
         timeout: Optional[int] = None,
         check: bool = True,
+        secret_newline: bool = True,
     ) -> subprocess.CompletedProcess:
         command = [str(item) for item in argv]
         self.log.event("info", "command", "run", shlex.join(command))
         input_text = None
         if stdin_secret is not None:
-            input_text = stdin_secret.reveal() + "\n"
+            input_text = stdin_secret.reveal() + ("\n" if secret_newline else "")
         elif stdin_text is not None:
             input_text = stdin_text
         try:

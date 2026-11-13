@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   install:
-    name: Install ${{ matrix.filesystem }} and reboot
+    name: Install ${{ matrix.label }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     strategy:
@@ -26,18 +26,22 @@ jobs:
             firmware: bios
             choices: choices-ext4.json
             luks: false
+            label: ext4-bios
           - filesystem: btrfs
             firmware: bios
             choices: choices-btrfs.json
             luks: false
+            label: btrfs-bios
           - filesystem: ext4
             firmware: uefi
             choices: choices-ext4.json
             luks: false
+            label: ext4-uefi
           - filesystem: ext4
             firmware: bios
             choices: choices-ext4-luks.json
             luks: true
+            label: ext4-luks-bios
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

@@ -308,12 +308,16 @@ class Installer:
             raise InstallError("an encryption passphrase is required")
         commands_list = commands.format_commands(self.plan)
         for argv in commands_list:
-            stdin_secret = (
-                self.secrets.luks_passphrase
-                if argv and argv[0] == "cryptsetup"
-                else None
+            is_luks = bool(argv and argv[0] == "cryptsetup")
+            stdin_secret = self.secrets.luks_passphrase if is_luks else None
+            # cryptsetup treats --key-file - as raw bytes. A trailing newline
+            # would become part of the key and break the initramfs prompt.
+            self._run(
+                argv,
+                stdin_secret=stdin_secret,
+                secret_newline=not is_luks,
+                timeout=1800,
             )
-            self._run(argv, stdin_secret=stdin_secret, timeout=1800)
             if argv and argv[0] == "cryptsetup" and "open" in argv:
                 self._wait(Path(f"/dev/mapper/{self.plan.encryption.mapper_name}"), "LUKS mapper")
 
