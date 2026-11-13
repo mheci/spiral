@@ -183,7 +183,7 @@ def main() -> int:
             for name in ("@home", "@var_log", "@cache"):
                 if name not in subvolumes:
                     raise RuntimeError(f"missing BTRFS subvolume: {name}")
-            if "subvol=@" not in root_options:
+            if "subvol=@" not in root_options and "subvol=/@" not in root_options:
                 raise RuntimeError(f"root is not mounted with subvol=@: {root_options!r}")
 
         fstab = sudo("cat /etc/fstab")
