@@ -1,0 +1,14 @@
+{
+  "id": "generic",
+  "label": "Generic / Virtual Machine",
+  "description": "Mesa software and virtual GPU support, for VMs and unknown adapters.",
+  "vendor": "generic",
+  "packages": ["mesa-vulkan-drivers", "mesa-utils"],
+  "required_available": ["mesa-utils"],
+  "modules": [],
+  "requires_headers": false,
+  "secure_boot": "not_applicable",
+  "fallback": null,
+  "status": "stable",
+  "notes": "Used when no dedicated GPU is detected or the virtual machine exposes a paravirtual adapter."
+}

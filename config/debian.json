@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "suite": "stable",
+  "release_url": "https://deb.debian.org/debian/dists/stable/InRelease",
+  "architecture": "amd64",
+  "architecture_suffix": "amd64",
+  "archive_areas": ["main", "contrib", "non-free-firmware"],
+  "keyring": "/usr/share/keyrings/debian-archive-keyring.gpg",
+  "mirrors": {
+    "debian": "https://deb.debian.org/debian",
+    "security": "https://security.debian.org/debian-security"
+  },
+  "snapshot": null,
+  "iso": {
+    "volume_id": "SPIRAL",
+    "application_id": "spiral",
+    "publisher": "Spiral Project"
+  }
+}

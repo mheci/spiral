@@ -1,0 +1,10 @@
+{
+  "id": "multimedia",
+  "label": "Multimedia",
+  "category": "software",
+  "description": "VLC, FFmpeg and GStreamer codec plugins.",
+  "packages": ["vlc", "ffmpeg", "gstreamer1.0-plugins-good", "gstreamer1.0-plugins-bad", "gstreamer1.0-plugins-ugly", "gstreamer1.0-libav"],
+  "required_available": ["vlc", "ffmpeg"],
+  "default": false,
+  "offline": false
+}

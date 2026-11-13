@@ -1,0 +1,10 @@
+{
+  "id": "gaming",
+  "label": "Gaming",
+  "description": "The standard Debian kernel with the gaming package group and GameMode. No custom kernel is built.",
+  "packages": ["linux-image-{arch}", "linux-headers-{arch}"],
+  "fallback_packages": [],
+  "arches": ["amd64"],
+  "package_groups": ["gaming"],
+  "notes": "No special patches are claimed. Performance comes from drivers, firmware and user-space tools."
+}

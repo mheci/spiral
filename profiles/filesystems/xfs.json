@@ -1,0 +1,11 @@
+{
+  "id": "xfs",
+  "label": "XFS",
+  "kind": "xfs",
+  "tools": ["xfsprogs"],
+  "supports_encryption": true,
+  "supports_swap_partition": true,
+  "supports_swap_file": false,
+  "default_layout": null,
+  "layouts": {}
+}

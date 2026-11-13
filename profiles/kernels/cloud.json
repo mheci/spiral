@@ -1,0 +1,10 @@
+{
+  "id": "cloud",
+  "label": "Cloud",
+  "description": "Debian's reduced cloud kernel image for virtual machines.",
+  "packages": ["linux-image-cloud-{arch}", "linux-headers-cloud-{arch}"],
+  "fallback_packages": ["linux-image-{arch}", "linux-headers-{arch}"],
+  "arches": ["amd64", "arm64"],
+  "requires_packages_available": ["linux-image-cloud-{arch}"],
+  "notes": "Intended for VMs. Hardware support is narrower than the standard kernel."
+}

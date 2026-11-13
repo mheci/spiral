@@ -1,0 +1,11 @@
+{
+  "id": "budgie",
+  "kind": "desktop",
+  "label": "Budgie",
+  "description": "The Budgie desktop with LightDM, where Debian ships it.",
+  "packages": ["task-budgie-desktop"],
+  "display_manager": "lightdm",
+  "session": "budgie",
+  "status": "stable",
+  "notes": "Availability is verified against the selected Debian release."
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "gpu_vendors": {
+    "10de": "nvidia",
+    "1002": "amd",
+    "1022": "amd",
+    "8086": "intel"
+  },
+  "driver_policy": {
+    "default": "auto",
+    "nvidia_proprietary_min_generation": "kepler",
+    "nvidia_open_min_generation": "turing",
+    "allow_nouveau_fallback": true,
+    "secure_boot_dkms": "requires_enrollment"
+  },
+  "removable_install": false,
+  "minimum_disk_gib": 20
+}

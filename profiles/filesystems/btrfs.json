@@ -1,0 +1,51 @@
+{
+  "id": "btrfs",
+  "label": "BTRFS",
+  "kind": "btrfs",
+  "tools": ["btrfs-progs"],
+  "supports_encryption": true,
+  "supports_swap_partition": true,
+  "supports_swap_file": true,
+  "default_layout": "standard",
+  "layouts": {
+    "standard": {
+      "label": "Standard",
+      "description": "Separate home, variable data, logs, cache, tmp and snapshot roots.",
+      "subvolumes": [
+        {"name": "@", "mountpoint": "/", "compressed": true, "noatime": true},
+        {"name": "@home", "mountpoint": "/home", "compressed": true, "noatime": true},
+        {"name": "@var", "mountpoint": "/var", "compressed": true, "noatime": true},
+        {"name": "@var_log", "mountpoint": "/var/log", "compressed": true, "noatime": true},
+        {"name": "@cache", "mountpoint": "/var/cache", "compressed": false, "noatime": true},
+        {"name": "@tmp", "mountpoint": "/tmp", "compressed": false, "noatime": true},
+        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "when": "snapshots"},
+        {"name": "@swap", "mountpoint": "/swap", "compressed": false, "noatime": true, "when": "swapfile"}
+      ]
+    },
+    "minimal": {
+      "label": "Minimal",
+      "description": "Root and home only. Fewer mounts, less isolation.",
+      "subvolumes": [
+        {"name": "@", "mountpoint": "/", "compressed": true, "noatime": true},
+        {"name": "@home", "mountpoint": "/home", "compressed": true, "noatime": true},
+        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "when": "snapshots"},
+        {"name": "@swap", "mountpoint": "/swap", "compressed": false, "noatime": true, "when": "swapfile"}
+      ]
+    },
+    "developer": {
+      "label": "Developer",
+      "description": "Standard layout plus a separate package cache and container storage.",
+      "subvolumes": [
+        {"name": "@", "mountpoint": "/", "compressed": true, "noatime": true},
+        {"name": "@home", "mountpoint": "/home", "compressed": true, "noatime": true},
+        {"name": "@var", "mountpoint": "/var", "compressed": true, "noatime": true},
+        {"name": "@var_log", "mountpoint": "/var/log", "compressed": true, "noatime": true},
+        {"name": "@cache", "mountpoint": "/var/cache", "compressed": false, "noatime": true},
+        {"name": "@tmp", "mountpoint": "/tmp", "compressed": false, "noatime": true},
+        {"name": "@containers", "mountpoint": "/var/lib/containers", "compressed": true, "noatime": true},
+        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "when": "snapshots"},
+        {"name": "@swap", "mountpoint": "/swap", "compressed": false, "noatime": true, "when": "swapfile"}
+      ]
+    }
+  }
+}

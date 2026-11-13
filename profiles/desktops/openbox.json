@@ -1,0 +1,11 @@
+{
+  "id": "openbox",
+  "kind": "window-manager",
+  "label": "Openbox",
+  "description": "Stacking X11 window manager with a panel, terminal and LightDM.",
+  "packages": ["openbox", "obconf", "tint2", "xterm"],
+  "display_manager": "lightdm",
+  "session": "openbox",
+  "status": "stable",
+  "notes": "A window manager is not a full desktop. You configure panels, notifications and file management."
+}

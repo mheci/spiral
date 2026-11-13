@@ -1,0 +1,11 @@
+{
+  "id": "gnome",
+  "kind": "desktop",
+  "label": "GNOME",
+  "description": "Debian's default GNOME desktop with GDM.",
+  "packages": ["task-gnome-desktop"],
+  "display_manager": "gdm3",
+  "session": "gnome",
+  "status": "stable",
+  "notes": "Installs the Debian GNOME task, which selects the supported application set."
+}

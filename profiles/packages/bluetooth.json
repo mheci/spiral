@@ -1,0 +1,10 @@
+{
+  "id": "bluetooth",
+  "label": "Bluetooth",
+  "category": "hardware",
+  "description": "BlueZ and the Blueman applet.",
+  "packages": ["bluez", "blueman"],
+  "required_available": ["bluez"],
+  "default": false,
+  "offline": false
+}

@@ -1,0 +1,10 @@
+{
+  "id": "laptop",
+  "label": "Laptop power management",
+  "category": "hardware",
+  "description": "UPower and power-profiles-daemon. Does not install TLP, which conflicts with desktop power profiles.",
+  "packages": ["upower", "power-profiles-daemon"],
+  "required_available": ["upower"],
+  "default": false,
+  "offline": false
+}

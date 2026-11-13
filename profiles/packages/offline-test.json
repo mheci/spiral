@@ -1,0 +1,9 @@
+{
+  "id": "offline-test",
+  "label": "Offline test profile",
+  "description": "Used by the offline ISO repository builder to prove that a minimal base set can be served from the medium.",
+  "packages": ["debootstrap", "ca-certificates", "systemd-sysv", "apt"],
+  "required_available": ["debootstrap", "apt"],
+  "default": false,
+  "offline": true
+}

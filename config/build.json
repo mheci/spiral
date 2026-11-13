@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "name": "Spiral",
+  "live": {
+    "username": "spiral",
+    "hostname": "spiral"
+  },
+  "boot": {
+    "timeout_seconds": 10,
+    "default_entry": "live",
+    "entries": [
+      {
+        "id": "live",
+        "label": "Start Spiral",
+        "append": "quiet splash"
+      },
+      {
+        "id": "safe-graphics",
+        "label": "Start Spiral (Safe Graphics)",
+        "append": "nomodeset quiet splash"
+      },
+      {
+        "id": "hardware-compatibility",
+        "label": "Start Spiral (Hardware Compatibility)",
+        "append": "noapic noacpi nomodeset quiet splash"
+      },
+      {
+        "id": "troubleshooting",
+        "label": "Troubleshooting Shell",
+        "append": "single quiet"
+      },
+      {
+        "id": "memtest",
+        "label": "Memory Test",
+        "memtest": true
+      }
+    ]
+  },
+  "offline": {
+    "enabled": false,
+    "profiles": ["base"]
+  },
+  "reproducible": {
+    "source_date_epoch": "git"
+  }
+}

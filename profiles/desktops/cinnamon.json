@@ -1,0 +1,11 @@
+{
+  "id": "cinnamon",
+  "kind": "desktop",
+  "label": "Cinnamon",
+  "description": "The Cinnamon desktop with LightDM.",
+  "packages": ["task-cinnamon-desktop"],
+  "display_manager": "lightdm",
+  "session": "cinnamon",
+  "status": "stable",
+  "notes": "Installs the Debian Cinnamon task."
+}

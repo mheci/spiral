@@ -1,0 +1,10 @@
+{
+  "id": "flatpak",
+  "label": "Flatpak",
+  "category": "software",
+  "description": "Flatpak support. Adds no remote; Flathub must be added by the user and is not trusted by default.",
+  "packages": ["flatpak"],
+  "required_available": ["flatpak"],
+  "default": false,
+  "offline": false
+}

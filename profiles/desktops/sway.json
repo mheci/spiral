@@ -1,0 +1,11 @@
+{
+  "id": "sway",
+  "kind": "window-manager",
+  "label": "Sway",
+  "description": "Tiling Wayland compositor with a terminal and LightDM session.",
+  "packages": ["sway", "swaybg", "swayidle", "swaylock", "foot"],
+  "display_manager": "lightdm",
+  "session": "sway",
+  "status": "stable",
+  "notes": "A window manager is not a full desktop. You configure panels, notifications and file management."
+}

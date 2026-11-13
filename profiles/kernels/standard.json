@@ -1,0 +1,9 @@
+{
+  "id": "standard",
+  "label": "Standard",
+  "description": "The current Debian Stable kernel. Recommended for most systems.",
+  "packages": ["linux-image-{arch}", "linux-headers-{arch}"],
+  "fallback_packages": [],
+  "arches": ["amd64", "arm64"],
+  "notes": "Debian Stable ships the kernel line it maintains for the release. Spiral does not build or patch its own kernel for this profile."
+}

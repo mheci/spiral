@@ -1,0 +1,11 @@
+{
+  "id": "minimal",
+  "kind": "minimal",
+  "label": "Minimal (no desktop)",
+  "description": "A console-only Debian system with networking and standard administration tools.",
+  "packages": [],
+  "display_manager": null,
+  "session": null,
+  "status": "stable",
+  "notes": "No graphical session is installed."
+}

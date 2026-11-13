@@ -1,0 +1,10 @@
+{
+  "id": "admin",
+  "label": "System administration",
+  "category": "software",
+  "description": "Filesystem, encryption, NVMe and monitoring tools.",
+  "packages": ["btrfs-progs", "cryptsetup", "smartmontools", "nvme-cli", "htop", "ncdu", "rsync", "tmux", "lsof"],
+  "required_available": ["cryptsetup"],
+  "default": false,
+  "offline": false
+}

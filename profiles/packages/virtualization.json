@@ -1,0 +1,10 @@
+{
+  "id": "virtualization",
+  "label": "Virtualization",
+  "category": "software",
+  "description": "QEMU, libvirt, virt-manager and OVMF for running virtual machines.",
+  "packages": ["qemu-system-x86", "qemu-utils", "libvirt-daemon-system", "virt-manager", "virtinst", "ovmf"],
+  "required_available": ["qemu-system-x86", "libvirt-daemon-system"],
+  "default": false,
+  "offline": false
+}

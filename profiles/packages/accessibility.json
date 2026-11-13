@@ -1,0 +1,10 @@
+{
+  "id": "accessibility",
+  "label": "Accessibility",
+  "category": "desktop",
+  "description": "Orca screen reader, speech synthesis, braille and the accessibility bus.",
+  "packages": ["orca", "espeak-ng", "speech-dispatcher", "brltty", "at-spi2-core"],
+  "required_available": ["orca"],
+  "default": false,
+  "offline": false
+}

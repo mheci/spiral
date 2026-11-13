@@ -1,0 +1,22 @@
+{
+  "id": "firmware",
+  "label": "Firmware",
+  "category": "firmware",
+  "description": "Free and non-free firmware used by common Wi-Fi, GPU, audio and laptop hardware.",
+  "packages": [
+    "firmware-linux-free",
+    "firmware-misc-nonfree",
+    "firmware-amd-graphics",
+    "firmware-intel-graphics",
+    "firmware-intel-misc",
+    "firmware-iwlwifi",
+    "firmware-realtek",
+    "firmware-atheros",
+    "firmware-brcm80211",
+    "firmware-mediatek",
+    "firmware-nvidia-graphics"
+  ],
+  "required_available": ["firmware-linux-free"],
+  "default": true,
+  "offline": true
+}

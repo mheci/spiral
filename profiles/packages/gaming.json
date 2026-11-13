@@ -1,0 +1,11 @@
+{
+  "id": "gaming",
+  "label": "Gaming",
+  "category": "software",
+  "description": "Steam, GameMode, MangoHud, Lutris and Wine. Adds the i386 architecture for Steam.",
+  "packages": ["steam-installer", "gamemode", "mangohud", "lutris", "wine", "mesa-vulkan-drivers"],
+  "required_available": ["steam-installer"],
+  "architectures": ["i386"],
+  "default": false,
+  "offline": false
+}

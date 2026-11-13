@@ -1,0 +1,10 @@
+{
+  "id": "development",
+  "label": "Development tools",
+  "category": "software",
+  "description": "Compilers, Git, Python, editors and common command-line tools.",
+  "packages": ["build-essential", "git", "python3", "python3-venv", "python3-pip", "vim", "curl", "wget", "jq"],
+  "required_available": ["build-essential", "git"],
+  "default": false,
+  "offline": false
+}

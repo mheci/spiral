@@ -1,0 +1,12 @@
+{
+  "id": "cosmic",
+  "kind": "desktop",
+  "label": "COSMIC",
+  "description": "System76's COSMIC desktop, only when the selected Debian release ships a compatible package set.",
+  "packages": ["cosmic-session"],
+  "display_manager": "greetd",
+  "session": "cosmic",
+  "status": "experimental",
+  "requires_packages_available": ["cosmic-session"],
+  "notes": "Spiral does not add a third-party repository for COSMIC. The option is unavailable unless Debian itself provides the packages."
+}

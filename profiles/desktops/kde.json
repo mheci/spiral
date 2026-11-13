@@ -1,0 +1,11 @@
+{
+  "id": "kde",
+  "kind": "desktop",
+  "label": "KDE Plasma",
+  "description": "Debian's KDE Plasma desktop with SDDM.",
+  "packages": ["task-kde-desktop"],
+  "display_manager": "sddm",
+  "session": "plasma",
+  "status": "stable",
+  "notes": "Installs the Debian KDE task."
+}

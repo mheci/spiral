@@ -1,0 +1,11 @@
+{
+  "id": "bspwm",
+  "kind": "window-manager",
+  "label": "bspwm",
+  "description": "Binary-space-partitioning X11 window manager with sxhkd, a terminal and LightDM.",
+  "packages": ["bspwm", "sxhkd", "xterm"],
+  "display_manager": "lightdm",
+  "session": "bspwm",
+  "status": "stable",
+  "notes": "A window manager is not a full desktop. You configure panels, notifications and file management."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "low-latency",
+  "label": "Low Latency (PREEMPT_RT)",
+  "description": "Debian's realtime kernel packages, for audio production and latency-sensitive work.",
+  "packages": ["linux-image-rt-{arch}", "linux-headers-rt-{arch}"],
+  "fallback_packages": ["linux-image-{arch}", "linux-headers-{arch}"],
+  "arches": ["amd64"],
+  "requires_packages_available": ["linux-image-rt-{arch}"],
+  "notes": "Installs the standard kernel as a fallback. Package availability is verified before any disk change."
+}

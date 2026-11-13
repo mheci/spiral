@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Entry point used on the Spiral live image."""
+
+import sys
+
+from spiral_installer.cli import main
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,11 @@
+{
+  "id": "mate",
+  "kind": "desktop",
+  "label": "MATE",
+  "description": "The MATE desktop with LightDM.",
+  "packages": ["task-mate-desktop"],
+  "display_manager": "lightdm",
+  "session": "mate",
+  "status": "stable",
+  "notes": "Installs the Debian MATE task."
+}

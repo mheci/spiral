@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "minimums": {
+    "ram_mib": 2048,
+    "disk_gib": 20
+  },
+  "default_groups": ["base", "firmware"],
+  "defaults": {
+    "filesystem": "btrfs",
+    "compression": "balanced",
+    "swap": "zram",
+    "kernel": "standard",
+    "desktop": "gnome",
+    "driver": "auto",
+    "bootloader": "grub",
+    "locale": "en_US.UTF-8",
+    "keymap": "us",
+    "timezone": "Etc/UTC",
+    "hostname": "spiral",
+    "username": "spiral",
+    "autologin": false,
+    "snapshots": false,
+    "btrfs_maintenance": false
+  },
+  "paths": {
+    "target": "/target",
+    "log_dir": "/var/log/spiral-installer",
+    "iso_repo": "/usr/share/spiral/repo",
+    "profiles": "/usr/share/spiral/profiles"
+  },
+  "partition": {
+    "esp_mib": 512,
+    "boot_mib": 1024,
+    "bios_grub_mib": 1,
+    "swap_gib": 4
+  },
+  "compression": {
+    "balanced": {"algorithm": "zstd", "level": 3},
+    "maximum": {"algorithm": "zstd", "level": 15},
+    "performance": {"algorithm": "lzo", "level": null},
+    "none": {"algorithm": "none", "level": null}
+  },
+  "swap": {
+    "zram_fraction": 0.5,
+    "file_gib": 4
+  },
+  "network": {
+    "required_for": ["online", "nvidia-proprietary", "flatpak"]
+  }
+}

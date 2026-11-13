@@ -1,0 +1,10 @@
+{
+  "id": "printing",
+  "label": "Printing",
+  "category": "hardware",
+  "description": "CUPS and common printer drivers.",
+  "packages": ["cups", "cups-filters", "printer-driver-all", "system-config-printer"],
+  "required_available": ["cups"],
+  "default": false,
+  "offline": false
+}

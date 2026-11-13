@@ -1,0 +1,10 @@
+{
+  "id": "audio",
+  "label": "Audio",
+  "category": "desktop",
+  "description": "PipeWire, WirePlumber and ALSA tools.",
+  "packages": ["pipewire", "pipewire-pulse", "wireplumber", "alsa-utils", "pavucontrol"],
+  "required_available": ["pipewire"],
+  "default": false,
+  "offline": false
+}

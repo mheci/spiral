@@ -1,0 +1,11 @@
+{
+  "id": "lxde",
+  "kind": "desktop",
+  "label": "LXDE",
+  "description": "The legacy GTK2 LXDE desktop with LightDM, where Debian still ships it.",
+  "packages": ["task-lxde-desktop"],
+  "display_manager": "lightdm",
+  "session": "lxde",
+  "status": "stable",
+  "notes": "Availability is verified against the selected Debian release. LXDE is legacy and may be dropped in a future release."
+}

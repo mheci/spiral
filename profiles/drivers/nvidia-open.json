@@ -1,0 +1,14 @@
+{
+  "id": "nvidia-open",
+  "label": "NVIDIA Open Kernel Modules",
+  "description": "NVIDIA's open kernel modules for supported Turing and newer GPUs, when Debian ships them.",
+  "vendor": "nvidia",
+  "packages": ["nvidia-open-kernel-dkms", "nvidia-driver-libs", "nvidia-vulkan-icd", "firmware-misc-nonfree"],
+  "required_available": ["nvidia-open-kernel-dkms"],
+  "modules": ["nvidia", "nvidia_modeset", "nvidia_drm", "nvidia_uvm"],
+  "requires_headers": true,
+  "secure_boot": "requires_enrollment",
+  "fallback": "nouveau",
+  "status": "conditional",
+  "notes": "Only offered when the selected Debian release provides the package. Turing or newer is required by the upstream open modules."
+}

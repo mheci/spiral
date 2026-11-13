@@ -1,0 +1,14 @@
+{
+  "id": "intel",
+  "label": "Intel Graphics",
+  "description": "In-kernel i915/xe support with Mesa, VA-API and Intel firmware.",
+  "vendor": "intel",
+  "packages": ["mesa-vulkan-drivers", "intel-media-va-driver", "firmware-intel-graphics"],
+  "required_available": ["mesa-vulkan-drivers"],
+  "modules": ["i915", "xe"],
+  "requires_headers": false,
+  "secure_boot": "signed_in_kernel",
+  "fallback": null,
+  "status": "stable",
+  "notes": "Intel graphics use the in-kernel driver. The installer does not add a third-party repository."
+}

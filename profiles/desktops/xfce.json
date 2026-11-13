@@ -1,0 +1,11 @@
+{
+  "id": "xfce",
+  "kind": "desktop",
+  "label": "XFCE",
+  "description": "A light, conventional desktop with LightDM.",
+  "packages": ["task-xfce-desktop"],
+  "display_manager": "lightdm",
+  "session": "xfce",
+  "status": "stable",
+  "notes": "Installs the Debian XFCE task."
+}

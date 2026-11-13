@@ -1,0 +1,14 @@
+{
+  "id": "nvidia-proprietary",
+  "label": "NVIDIA Proprietary",
+  "description": "Debian's proprietary NVIDIA driver with DKMS kernel modules.",
+  "vendor": "nvidia",
+  "packages": ["nvidia-driver", "nvidia-settings", "nvidia-vulkan-icd", "nvidia-detect", "firmware-misc-nonfree"],
+  "required_available": ["nvidia-driver"],
+  "modules": ["nvidia", "nvidia_modeset", "nvidia_drm", "nvidia_uvm"],
+  "requires_headers": true,
+  "secure_boot": "requires_enrollment",
+  "fallback": "nouveau",
+  "status": "stable",
+  "notes": "Kernel modules are built with DKMS. With Secure Boot enabled they will not load until a Machine Owner Key is enrolled. Spiral never disables Secure Boot."
+}

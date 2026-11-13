@@ -1,0 +1,27 @@
+{
+  "id": "base",
+  "label": "Base system",
+  "category": "system",
+  "description": "Core Debian system, networking, firmware tooling and recovery tools.",
+  "packages": [
+    "systemd-sysv",
+    "sudo",
+    "ca-certificates",
+    "locales",
+    "console-setup",
+    "keyboard-configuration",
+    "tzdata",
+    "initramfs-tools",
+    "network-manager",
+    "wpasupplicant",
+    "btrfs-progs",
+    "cryptsetup-initramfs",
+    "bash-completion",
+    "less",
+    "nano",
+    "e2fsprogs"
+  ],
+  "required_available": ["systemd-sysv", "initramfs-tools"],
+  "default": true,
+  "offline": true
+}

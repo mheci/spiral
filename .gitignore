@@ -1,0 +1,15 @@
+build/
+!builder/config/
+iso/
+*.iso
+*.iso.sha256
+*.log
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+dist/
+release/
+spiral-build.json
+SHA256SUMS
+SHA256SUMS.asc

@@ -1,0 +1,14 @@
+{
+  "id": "amd",
+  "label": "AMD (amdgpu)",
+  "description": "In-kernel amdgpu with Mesa, VA-API and AMD firmware.",
+  "vendor": "amd",
+  "packages": ["mesa-vulkan-drivers", "mesa-va-drivers", "xserver-xorg-video-amdgpu", "firmware-amd-graphics"],
+  "required_available": ["mesa-vulkan-drivers"],
+  "modules": ["amdgpu"],
+  "requires_headers": false,
+  "secure_boot": "signed_in_kernel",
+  "fallback": null,
+  "status": "stable",
+  "notes": "No proprietary driver is installed on systems with in-kernel support."
+}

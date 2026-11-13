@@ -1,0 +1,11 @@
+{
+  "id": "lxqt",
+  "kind": "desktop",
+  "label": "LXQt",
+  "description": "The Qt-based LXQt desktop with SDDM.",
+  "packages": ["task-lxqt-desktop"],
+  "display_manager": "sddm",
+  "session": "lxqt",
+  "status": "stable",
+  "notes": "Installs the Debian LXQt task."
+}

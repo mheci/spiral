@@ -1,0 +1,11 @@
+{
+  "id": "awesome",
+  "kind": "window-manager",
+  "label": "AwesomeWM",
+  "description": "Highly configurable X11 window manager with a terminal and LightDM.",
+  "packages": ["awesome", "xterm"],
+  "display_manager": "lightdm",
+  "session": "awesome",
+  "status": "stable",
+  "notes": "A window manager is not a full desktop. You configure panels, notifications and file management."
+}

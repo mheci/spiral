@@ -1,0 +1,14 @@
+{
+  "id": "nouveau",
+  "label": "Nouveau (open source)",
+  "description": "The in-kernel Nouveau driver with Mesa. No proprietary kernel modules.",
+  "vendor": "nvidia",
+  "packages": ["xserver-xorg-video-nouveau", "mesa-vulkan-drivers", "firmware-misc-nonfree"],
+  "required_available": ["xserver-xorg-video-nouveau"],
+  "modules": ["nouveau"],
+  "requires_headers": false,
+  "secure_boot": "signed_in_kernel",
+  "fallback": null,
+  "status": "stable",
+  "notes": "Performance and power management are below the proprietary driver on many GPUs. Firmware is required for newer chips."
+}

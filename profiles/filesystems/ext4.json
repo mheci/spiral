@@ -1,0 +1,11 @@
+{
+  "id": "ext4",
+  "label": "EXT4",
+  "kind": "ext4",
+  "tools": ["e2fsprogs"],
+  "supports_encryption": true,
+  "supports_swap_partition": true,
+  "supports_swap_file": true,
+  "default_layout": null,
+  "layouts": {}
+}
