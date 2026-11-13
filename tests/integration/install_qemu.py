@@ -22,6 +22,7 @@ import pexpect
 LIVE_PROMPT = r"spiral@spiral:[^$]*\$ "
 INSTALL_PROMPT = r"testuser@spiral-test:[^$]*\$ "
 PASSWORD = "spiral-test-password"
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def _clean(text: str) -> str:
@@ -127,11 +128,20 @@ def main() -> int:
         child.sendline(PASSWORD)
         child.expect(INSTALL_PROMPT, timeout=180)
         print("installed system login succeeded")
+        child.sendline("stty -echo")
+        child.expect(INSTALL_PROMPT, timeout=30)
+
+        def clean(text: str, command: str) -> str:
+            text = ANSI_RE.sub("", text).replace("\r", "")
+            lines = [line for line in text.splitlines() if line.strip()]
+            if lines and command in lines[0]:
+                lines = lines[1:]
+            return "\n".join(lines).strip()
 
         def shell(sh_command: str, timeout: int = 180) -> str:
             child.sendline(sh_command)
             child.expect(INSTALL_PROMPT, timeout=timeout)
-            return child.before
+            return clean(child.before, sh_command)
 
         def sudo(sh_command: str, timeout: int = 300) -> str:
             child.sendline("sudo " + sh_command)
@@ -142,7 +152,7 @@ def main() -> int:
             if result == 0:
                 child.sendline(PASSWORD)
                 child.expect(INSTALL_PROMPT, timeout=timeout)
-            return child.before
+            return clean(child.before, "sudo " + sh_command)
 
         hostname = shell("hostnamectl --static").strip()
         root_fs = shell("findmnt -no FSTYPE /").strip()
