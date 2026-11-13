@@ -315,6 +315,7 @@ def debootstrap_command(plan: InstallPlan, debian: DebianConfig, target: str) ->
         f"--arch={plan.architecture}",
         "--variant=minbase",
         f"--keyring={debian.keyring}",
+        "--include=ca-certificates",
     ]
     if plan.offline:
         command.extend(["--components=main", "--no-check-gpg"])
@@ -341,7 +342,7 @@ def add_foreign_architecture(target: str, architecture: str) -> list[str]:
 def grub_install_command(plan: InstallPlan, target: str) -> list[str]:
     if plan.firmware.value == "uefi":
         efivariant = "x86_64" if plan.architecture == "amd64" else plan.architecture
-        return [
+        command = [
             "chroot",
             target,
             "grub-install",
@@ -350,6 +351,9 @@ def grub_install_command(plan: InstallPlan, target: str) -> list[str]:
             "--bootloader-id=Spiral",
             "--recheck",
         ]
+        if plan.boot.secure_boot:
+            command.append("--uefi-secure-boot")
+        return command
     return [
         "chroot",
         target,

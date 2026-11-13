@@ -78,7 +78,14 @@ def read_text(path: str | Path, default: Optional[str] = None) -> Optional[str]:
 def which(program: str) -> Optional[str]:
     from shutil import which as _which
 
-    return _which(program)
+    found = _which(program)
+    if found:
+        return found
+    for directory in ("/usr/local/sbin", "/usr/sbin", "/sbin", "/usr/local/bin", "/usr/bin", "/bin"):
+        candidate = Path(directory) / program
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
 
 
 def run_capture(

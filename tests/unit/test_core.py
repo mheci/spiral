@@ -274,6 +274,15 @@ class CommandTests(unittest.TestCase):
         self.assertIn("--target=x86_64-efi", argv)
         self.assertIn("--efi-directory=/boot/efi", argv)
 
+    def test_secure_boot_grub_flag(self):
+        from spiral_installer import commands
+        from spiral_installer.plan import InstallChoices, PlanBuilder
+
+        report, disk = make_disk(secure_boot=True)
+        plan = PlanBuilder(make_repo(), report, make_release()).build(InstallChoices(disk=disk.stable_path))
+        argv = commands.grub_install_command(plan, "/target")
+        self.assertIn("--uefi-secure-boot", argv)
+
 
 class ReleaseTests(unittest.TestCase):
     def test_missing_release_is_an_error(self):

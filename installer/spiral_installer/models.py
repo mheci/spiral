@@ -235,6 +235,7 @@ class BootPlan:
     partition_table: PartitionTable
     efi_partition: Optional[PartitionPlan]
     separate_boot: bool
+    secure_boot: bool = False
 
     @property
     def is_uefi(self) -> bool:

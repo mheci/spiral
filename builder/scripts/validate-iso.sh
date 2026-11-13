@@ -50,10 +50,25 @@ if ! grep -qiE "UEFI|EFI" "$TMP/eltorito.txt"; then
     exit 1
 fi
 
-xorriso -osirrox on -indev "$ISO" -extract /live "$TMP/live" >/dev/null 2>&1
-for file in vmlinuz initrd.img filesystem.squashfs; do
-    [ -f "$TMP/live/$file" ] || { echo "missing /live/$file" >&2; exit 1; }
-done
+if ! xorriso -osirrox on -indev "$ISO" -extract /live "$TMP/live" >/dev/null 2>&1; then
+    echo "could not extract /live from the ISO" >&2
+    xorriso -indev "$ISO" -find /live -maxdepth 1 -print 2>&1 >&2 || true
+    exit 1
+fi
+shopt -s nullglob
+kernels=("$TMP/live"/vmlinuz*)
+initrds=("$TMP/live"/initrd*)
+if [ "${#kernels[@]}" -lt 1 ]; then
+    echo "no kernel image under /live" >&2
+    ls -la "$TMP/live" >&2
+    exit 1
+fi
+if [ "${#initrds[@]}" -lt 1 ]; then
+    echo "no initramfs under /live" >&2
+    ls -la "$TMP/live" >&2
+    exit 1
+fi
+[ -f "$TMP/live/filesystem.squashfs" ] || { echo "missing /live/filesystem.squashfs" >&2; exit 1; }
 
 if ! RELEASE_IN_IMAGE=$(unsquashfs -cat "$TMP/live/filesystem.squashfs" usr/share/spiral/release.json 2>/dev/null); then
     RELEASE_IN_IMAGE=$(unsquashfs -cat "$TMP/live/filesystem.squashfs" /usr/share/spiral/release.json)
@@ -88,6 +103,11 @@ if xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg "$TMP/grub.cfg
     for label in "Start Spiral" "Safe Graphics" "Troubleshooting"; do
         grep -q "$label" "$TMP/grub.cfg" || { echo "GRUB menu is missing: $label" >&2; exit 1; }
     done
+    if grep -qE '@(KERNEL_LIVE|INITRD_LIVE|APPEND_LIVE)@' "$TMP/grub.cfg"; then
+        echo "GRUB menu still contains unresolved live-build placeholders" >&2
+        exit 1
+    fi
+    grep -q "vmlinuz" "$TMP/grub.cfg" || { echo "GRUB menu has no kernel path" >&2; exit 1; }
 else
     echo "could not find /boot/grub/grub.cfg on the ISO" >&2
     exit 1

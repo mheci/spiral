@@ -272,6 +272,7 @@ class PlanBuilder:
             partition_table=table,
             efi_partition=next((p for p in partitions if p.role is PartitionRole.ESP), None),
             separate_boot=encryption,
+            secure_boot=bool(self.hardware.secure_boot),
         )
 
         software = self._software(
