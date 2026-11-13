@@ -1,0 +1,73 @@
+name: install-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build workflow run ID (empty uses the latest successful build)
+        required: false
+  schedule:
+    - cron: "30 6 * * 0"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  install:
+    name: Install ${{ matrix.filesystem }} and reboot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        filesystem: [ext4, btrfs]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Resolve build run
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          RUN_ID="$INPUT_RUN_ID"
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh run list --workflow build.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          [ -n "$RUN_ID" ] || { echo "no successful build run found" >&2; exit 1; }
+          echo "id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      - name: Download ISO artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.run.outputs.id }}
+        run: gh run download "$RUN_ID" --name spiral-iso --dir dist
+      - name: Install QEMU and pexpect
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf python3-pexpect
+      - name: Run unattended installation
+        env:
+          FILESYSTEM: ${{ matrix.filesystem }}
+        run: |
+          ISO=$(find dist -maxdepth 1 -name '*.iso' | head -n 1)
+          set +e
+          sudo python3 tests/integration/install_qemu.py \
+            --iso "$ISO" \
+            --filesystem "$FILESYSTEM" \
+            --workdir "$RUNNER_TEMP/spiral-install"
+          code=$?
+          sudo chmod -R a+rX "$RUNNER_TEMP/spiral-install" || true
+          exit "$code"
+      - name: Upload installation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: install-test-${{ matrix.filesystem }}
+          path: |
+            ${{ runner.temp }}/spiral-install/serial-${{ matrix.filesystem }}.log
+            ${{ runner.temp }}/spiral-install/result-${{ matrix.filesystem }}.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,49 @@
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build workflow run ID containing a validated ISO artifact
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish validated artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Download artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: gh run download "$RUN_ID" --name spiral-iso --dir dist
+      - name: Verify checksums
+        working-directory: dist
+        run: sha256sum -c SHA256SUMS
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
+        with:
+          subject-path: "dist/*.iso"
+      - name: Publish release
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPIRAL_GPG_PRIVATE_KEY: ${{ secrets.SPIRAL_GPG_PRIVATE_KEY }}
+          SPIRAL_GPG_PASSPHRASE: ${{ secrets.SPIRAL_GPG_PASSPHRASE }}
+        run: ../builder/scripts/release.sh --dist .

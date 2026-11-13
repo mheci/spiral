@@ -18,6 +18,10 @@ The build workflow:
 
 The `weekly-rebuild` workflow calls the same build every Sunday at 03:17 UTC. It publishes only when the Debian version, package manifest hash or git commit changed, unless force is requested. The validation build itself always runs.
 
+A validated artifact can also be published without rebuilding it through the `publish` workflow, which takes the build run ID, verifies `SHA256SUMS`, attests provenance and creates the release.
+
+Protect the `release` environment in repository settings before enabling publication. The workflow declares that environment, but GitHub cannot enforce reviewers until the repository owner configures them.
+
 ## Manual contributor build
 
 Use a disposable Debian trixie container. Do not build on the host if you can avoid it. The build needs root inside the container for debootstrap and chroot.

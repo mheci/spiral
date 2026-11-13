@@ -25,7 +25,7 @@ This file is the honest project ledger. A checked box requires evidence, not cod
 
 ## Implemented, validation pending
 
-- [ ] Full ISO build in GitHub Actions
+- [x] Full ISO build in GitHub Actions
 - [ ] UEFI QEMU boot smoke test
 - [ ] BIOS QEMU boot smoke test
 - [ ] Complete installation in a disposable VM

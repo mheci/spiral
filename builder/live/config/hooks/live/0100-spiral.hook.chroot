@@ -73,6 +73,15 @@ EOF
 systemctl enable NetworkManager.service || true
 systemctl set-default graphical.target || true
 
+# Serial autologin makes the live image testable in a VM and recoverable from a
+# serial console. It is limited to the disposable live account, never installed.
+install -d /etc/systemd/system/serial-getty@ttyS0.service.d
+cat > /etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin ${LIVE_USER} --noclear %I \$TERM
+EOF
+
 install -d /var/log/spiral-installer
 chmod 0750 /var/log/spiral-installer
 

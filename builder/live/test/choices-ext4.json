@@ -1,0 +1,20 @@
+{
+  "disk": "/dev/vda",
+  "filesystem": "ext4",
+  "swap": "zram",
+  "encryption": false,
+  "kernel": "standard",
+  "desktops": ["minimal"],
+  "driver": "generic",
+  "package_groups": [],
+  "snapshots": false,
+  "btrfs_maintenance": false,
+  "username": "testuser",
+  "full_name": "Test User",
+  "hostname": "spiral-test",
+  "autologin": false,
+  "locale": "en_US.UTF-8",
+  "keymap": "us",
+  "timezone": "Etc/UTC",
+  "offline": false
+}

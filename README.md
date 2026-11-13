@@ -23,8 +23,8 @@ The project is an alpha. It does not yet claim production readiness. The status 
 | Area | State | Evidence |
 | --- | --- | --- |
 | Debian release discovery and signature verification | Implemented | Unit tests for parsing, CI uses `gpgv` during build |
-| Live ISO construction | Implemented, build in progress | GitHub Actions build workflow |
-| UEFI and BIOS boot entries | Implemented | Structural ISO validation checks GRUB labels and El Torito entries |
+| Live ISO construction | Implemented and CI-validated | GitHub Actions build run 43371590708, 1.45 GiB ISO |
+| UEFI and BIOS boot entries | Implemented | Structural ISO validation checks GRUB labels, kernel paths and El Torito entries |
 | Hardware detection | Implemented | Parser unit tests with fixture output |
 | BTRFS layouts, compression, swapfile rules | Implemented | Unit tests |
 | Installation planning and confirmation | Implemented | Unit tests |
@@ -34,7 +34,7 @@ The project is an alpha. It does not yet claim production readiness. The status 
 | LUKS2 installation | Implemented, hardware validation pending | Separate `/boot`, crypttab and initramfs |
 | NVIDIA, AMD and Intel driver selection | Implemented, hardware validation pending | Package availability and Secure Boot policy are tested |
 | Desktop profiles | Implemented, hardware validation pending | Every package is checked against Debian Stable in CI |
-| Automated full installation test | Not implemented | QEMU boot smoke test only |
+| Automated full installation test | Not implemented | QEMU boot smoke test workflow exists; installation harness is not built |
 | Manual partitioning, LVM, RAID, dual-boot reuse | Not implemented | Guided whole-disk installation only |
 | Offline package repository on the ISO | Installer path implemented, builder disabled | `build.offline.enabled` is false |
 | Secure Boot compatibility with third-party modules | Policy implemented, not validated | MOK enrollment required for DKMS modules |

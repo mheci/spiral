@@ -12,7 +12,7 @@ from . import commands, disks
 from .config import Repository
 from .errors import InstallError, SpiralError
 from .log import InstallLog
-from .models import InstallPlan, InstallSecrets, PartitionRole, SwapStrategy
+from .models import Firmware, InstallPlan, InstallSecrets, PartitionRole, SwapStrategy
 from .packages import AptPackageResolver, check_offline_repository
 from .plan import Approval, validate_approval
 from .runner import CommandRunner
@@ -415,6 +415,16 @@ class Installer:
         self._apt_install(list(self.plan.software.desktop_packages), timeout=3600)
 
     def phase_software(self) -> None:
+        if self.plan.firmware is Firmware.BIOS:
+            selections = (
+                f"grub-pc grub-pc/install_devices multiselect {self.plan.disk.path}\n"
+                "grub-pc grub-pc/install_devices_empty boolean false\n"
+            )
+            self._run(
+                ["chroot", str(self.target), "debconf-set-selections"],
+                stdin_text=selections,
+                timeout=60,
+            )
         self._apt_install(list(self.plan.software.packages), timeout=3600)
 
     def phase_users(self) -> None:
@@ -489,9 +499,15 @@ class Installer:
             self._configure_autologin()
         grub_default = self.target / "etc" / "default" / "grub"
         existing = grub_default.read_text(encoding="utf-8") if grub_default.is_file() else ""
+        console = "console=tty0 console=ttyS0,115200"
         extra = '\nGRUB_DISTRIBUTOR="Spiral"\nGRUB_TIMEOUT=5\n'
         if self.plan.filesystem_kind.value == "btrfs":
-            extra += 'GRUB_CMDLINE_LINUX="rootflags=subvol=@"\nGRUB_PRELOAD_MODULES="btrfs"\n'
+            extra += (
+                f'GRUB_CMDLINE_LINUX="rootflags=subvol=@ {console}"\n'
+                'GRUB_PRELOAD_MODULES="btrfs"\n'
+            )
+        else:
+            extra += f'GRUB_CMDLINE_LINUX="{console}"\n'
         grub_default.write_text(existing.rstrip() + "\n" + extra, encoding="utf-8")
         self._write("etc/issue", f"Spiral {self.plan.release.version} ({self.plan.release.codename})\n")
         assets = self.repo.root / "assets" / "branding"
