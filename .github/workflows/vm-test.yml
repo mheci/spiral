@@ -1,0 +1,50 @@
+name: vm-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Build workflow run ID (empty uses the latest successful build)
+        required: false
+  schedule:
+    - cron: "0 5 * * 0"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  boot:
+    name: Boot the latest ISO in QEMU
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Resolve build run
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          RUN_ID="$INPUT_RUN_ID"
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh run list --workflow build.yml --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          fi
+          [ -n "$RUN_ID" ] || { echo "no successful build run found" >&2; exit 1; }
+          echo "id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "using build run $RUN_ID"
+      - name: Download ISO artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "${{ steps.run.outputs.id }}" --name spiral-iso --dir dist
+      - name: UEFI and BIOS boot smoke tests
+        run: |
+          ISO=$(find dist -maxdepth 1 -name '*.iso' | head -n 1)
+          [ -n "$ISO" ] || { echo "ISO not found in artifact" >&2; exit 1; }
+          docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE:/spiral" -w /spiral \
+            debian:trixie \
+            bash -lc "apt-get update && apt-get install -y --no-install-recommends qemu-system-x86 ovmf && ./builder/scripts/smoke-qemu.sh --iso '$ISO' --mode uefi --timeout 600 && ./builder/scripts/smoke-qemu.sh --iso '$ISO' --mode bios --timeout 600"

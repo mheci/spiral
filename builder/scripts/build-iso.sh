@@ -58,6 +58,7 @@ ISO_VOLUME=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["is
 ISO_APP=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["iso"]["application_id"])' "$ROOT/config/debian.json")
 ISO_PUBLISHER=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["iso"]["publisher"])' "$ROOT/config/debian.json")
 
+git config --global --add safe.directory "$ROOT" 2>/dev/null || true
 GIT_SHA=$(git -C "$ROOT" rev-parse --short=7 HEAD 2>/dev/null || echo nogit)
 GIT_DIRTY=false
 if [ -n "$(git -C "$ROOT" status --porcelain 2>/dev/null || true)" ]; then GIT_DIRTY=true; fi

@@ -5,7 +5,7 @@
 `test.yml` runs:
 
 1. byte compilation of the installer and tests
-2. 47 unit tests with `unittest`
+2. the unit suite with `unittest`
 3. repository config validation
 4. a package-name check against the real Debian Stable `Packages.xz` indexes for main, contrib, non-free and non-free-firmware
 
@@ -49,7 +49,7 @@ A structural pass is not a boot test and is not an installation test.
 
 ## Virtual machine testing
 
-`builder/scripts/smoke-qemu.sh` boots the ISO under QEMU. It is included but not yet wired into the weekly workflow. It can run in UEFI mode with OVMF or BIOS mode with SeaBIOS. It passes when the serial log reaches a systemd target and no kernel panic appears.
+`builder/scripts/smoke-qemu.sh` boots the ISO under QEMU. The `vm-test` workflow runs it against the latest successful build artifact in UEFI mode with OVMF and BIOS mode with SeaBIOS, weekly and on demand. It passes when the serial log reaches a systemd target and no kernel panic appears.
 
 A complete installation test still needs:
 

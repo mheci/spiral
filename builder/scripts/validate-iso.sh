@@ -94,8 +94,10 @@ for path in \
     grep -q "$path" "$TMP/squash-list.txt" || { echo "missing in squashfs: $path" >&2; exit 1; }
 done
 
-if grep -qE '(root|home/[^/]+)/\.ssh' "$TMP/squash-list.txt"; then
-    echo "private SSH material found in the live image" >&2
+ssh_material=$(grep -E '(^|/)(squashfs-root/)?(root|home/[^/]+)/\.ssh(/|$)' "$TMP/squash-list.txt" || true)
+if [ -n "$ssh_material" ]; then
+    echo "private SSH material found in the live image:" >&2
+    printf '%s\n' "$ssh_material" >&2
     exit 1
 fi
 

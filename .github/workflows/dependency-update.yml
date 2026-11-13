@@ -40,5 +40,5 @@ jobs:
           if [ -n "$NUMBER" ]; then
             gh issue edit "$NUMBER" --body "$BODY"
           else
-            gh issue create --title "$TITLE" --body "$BODY" --label dependencies
+            gh issue create --title "$TITLE" --body "$BODY"
           fi
