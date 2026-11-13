@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import platform
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Optional, Sequence
 
