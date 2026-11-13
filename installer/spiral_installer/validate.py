@@ -7,7 +7,7 @@ from .errors import ConfigError
 
 PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9+.\-]+$")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]*$")
-SUBVOL_RE = re.compile(r"^@[a-z0-9_]+$")
+SUBVOL_RE = re.compile(r"^@[a-z0-9_]*$")
 ARCH_RE = re.compile(r"^[a-z0-9]+$")
 
 

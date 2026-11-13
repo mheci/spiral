@@ -20,14 +20,9 @@
         "append": "nomodeset quiet splash"
       },
       {
-        "id": "hardware-compatibility",
-        "label": "Start Spiral (Hardware Compatibility)",
-        "append": "noapic noacpi nomodeset quiet splash"
-      },
-      {
         "id": "troubleshooting",
-        "label": "Troubleshooting Shell",
-        "append": "single quiet"
+        "label": "Start Spiral (Troubleshooting / Hardware Compatibility)",
+        "append": "noapic noacpi nomodeset quiet splash"
       },
       {
         "id": "memtest",

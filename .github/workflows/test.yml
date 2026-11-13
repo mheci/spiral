@@ -43,3 +43,12 @@ jobs:
           print(f"kernel profiles: {', '.join(sorted(repo.profiles.kernels))}")
           print(f"package groups: {', '.join(sorted(repo.profiles.packages))}")
           PY
+
+  packages:
+    name: Debian package names
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check every package against Debian Stable
+        run: python3 builder/scripts/check-packages.py --root .

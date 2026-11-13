@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0d12"/>
+      <stop offset="1" stop-color="#181c28"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7bdff2"/>
+      <stop offset="0.5" stop-color="#5c7cfa"/>
+      <stop offset="1" stop-color="#b197fc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g fill="none" stroke="url(#line)" stroke-linecap="round" opacity="0.9">
+    <path d="M1350 540c0 180-146 326-326 326S698 720 698 540s146-326 326-326 326 146 326 326" stroke-width="26"/>
+    <path d="M1290 540c0 147-119 266-266 266s-266-119-266-266 119-266 266-266 266 119 266 266" stroke-width="20" opacity="0.8"/>
+    <path d="M1230 540c0 114-92 206-206 206s-206-92-206-206 92-206 206-206 206 92 206 206" stroke-width="15" opacity="0.65"/>
+    <path d="M1170 540c0 81-65 146-146 146s-146-65-146-146 65-146 146-146 146 65 146 146" stroke-width="11" opacity="0.5"/>
+    <path d="M1110 540c0 47-38 86-86 86s-86-38-86-86 38-86 86-86 86 38 86 86" stroke-width="8" opacity="0.35"/>
+  </g>
+  <circle cx="1024" cy="540" r="20" fill="#f8f9ff"/>
+  <text x="120" y="940" fill="#f8f9ff" font-family="DejaVu Sans, sans-serif" font-size="72" font-weight="700">Spiral</text>
+  <text x="124" y="996" fill="#a9b1c8" font-family="DejaVu Sans, sans-serif" font-size="28">Debian, configured with intent.</text>
+</svg>

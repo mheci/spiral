@@ -4,7 +4,7 @@
   "release_url": "https://deb.debian.org/debian/dists/stable/InRelease",
   "architecture": "amd64",
   "architecture_suffix": "amd64",
-  "archive_areas": ["main", "contrib", "non-free-firmware"],
+  "archive_areas": ["main", "contrib", "non-free", "non-free-firmware"],
   "keyring": "/usr/share/keyrings/debian-archive-keyring.gpg",
   "mirrors": {
     "debian": "https://deb.debian.org/debian",

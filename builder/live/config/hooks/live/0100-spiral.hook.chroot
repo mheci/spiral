@@ -1,0 +1,73 @@
+#!/bin/sh
+set -eu
+
+echo "Spiral: configuring live environment" >&2
+
+python3 -m compileall -q /usr/lib/spiral-installer
+PYTHONPATH=/usr/lib/spiral-installer python3 - <<'PY'
+import json
+from pathlib import Path
+
+import spiral_installer
+from spiral_installer.config import load_repository
+
+repo = load_repository(Path("/usr/share/spiral"))
+print(f"installer {spiral_installer.__version__}, Debian profiles {len(repo.profiles.desktops)} desktops")
+PY
+
+if [ -d /usr/share/spiral/branding ]; then
+    install -d /usr/share/icons/hicolor/scalable/apps
+    if [ -f /usr/share/spiral/branding/logo.svg ]; then
+        install -m 0644 /usr/share/spiral/branding/logo.svg \
+            /usr/share/icons/hicolor/scalable/apps/spiral.svg
+    fi
+    if [ -f /usr/share/spiral/branding/wallpaper.svg ]; then
+        install -d /usr/share/backgrounds/spiral
+        install -m 0644 /usr/share/spiral/branding/wallpaper.svg \
+            /usr/share/backgrounds/spiral/wallpaper.svg
+    fi
+fi
+
+install -d /usr/share/applications /etc/xdg/autostart
+cat > /usr/share/applications/spiral-installer.desktop <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Install Spiral
+Comment=Install Spiral to this computer
+Exec=spiral-installer
+Icon=spiral
+Terminal=true
+Categories=System;Installer;
+EOF
+
+LIVE_USER=$(python3 - <<'PY'
+import json
+print(json.load(open("/usr/share/spiral/build-info.json"))["live_username"])
+PY
+)
+printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$LIVE_USER" > /etc/sudoers.d/spiral-live
+chmod 0440 /etc/sudoers.d/spiral-live
+
+cat > /etc/issue <<'EOF'
+Spiral live environment
+Run: spiral-installer
+EOF
+
+cat > /etc/motd <<'EOF'
+Welcome to Spiral.
+
+The installer is available as:
+
+    spiral-installer
+
+It installs to one disk and erases that disk. The graphical installer is
+started from the application menu when the desktop session is used.
+EOF
+
+systemctl enable NetworkManager.service || true
+systemctl set-default graphical.target || true
+
+install -d /var/log/spiral-installer
+chmod 0750 /var/log/spiral-installer
+
+echo "Spiral: live environment ready" >&2

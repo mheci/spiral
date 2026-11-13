@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+export PYTHONPATH=/usr/lib/spiral-installer
+exec python3 -m spiral_installer "$@"
