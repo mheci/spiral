@@ -18,7 +18,7 @@
         {"name": "@var_log", "mountpoint": "/var/log", "compressed": true, "noatime": true},
         {"name": "@cache", "mountpoint": "/var/cache", "compressed": false, "noatime": true},
         {"name": "@tmp", "mountpoint": "/tmp", "compressed": false, "noatime": true},
-        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "when": "snapshots"},
+        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "noatime": true, "when": "snapshots"},
         {"name": "@swap", "mountpoint": "/swap", "compressed": false, "noatime": true, "when": "swapfile"}
       ]
     },
@@ -28,7 +28,7 @@
       "subvolumes": [
         {"name": "@", "mountpoint": "/", "compressed": true, "noatime": true},
         {"name": "@home", "mountpoint": "/home", "compressed": true, "noatime": true},
-        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "when": "snapshots"},
+        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "noatime": true, "when": "snapshots"},
         {"name": "@swap", "mountpoint": "/swap", "compressed": false, "noatime": true, "when": "swapfile"}
       ]
     },
@@ -43,7 +43,7 @@
         {"name": "@cache", "mountpoint": "/var/cache", "compressed": false, "noatime": true},
         {"name": "@tmp", "mountpoint": "/tmp", "compressed": false, "noatime": true},
         {"name": "@containers", "mountpoint": "/var/lib/containers", "compressed": true, "noatime": true},
-        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "when": "snapshots"},
+        {"name": "@snapshots", "mountpoint": "/.snapshots", "compressed": false, "noatime": true, "when": "snapshots"},
         {"name": "@swap", "mountpoint": "/swap", "compressed": false, "noatime": true, "when": "swapfile"}
       ]
     }
