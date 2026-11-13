@@ -364,6 +364,22 @@ def grub_install_command(plan: InstallPlan, target: str) -> list[str]:
     ]
 
 
+def grub_removable_command(plan: InstallPlan, target: str) -> list[str]:
+    efivariant = "x86_64" if plan.architecture == "amd64" else plan.architecture
+    command = [
+        "chroot",
+        target,
+        "grub-install",
+        f"--target={efivariant}-efi",
+        "--efi-directory=/boot/efi",
+        "--removable",
+        "--no-nvram",
+    ]
+    if plan.boot.secure_boot:
+        command.append("--uefi-secure-boot")
+    return command
+
+
 def initramfs_command(target: str) -> list[str]:
     return ["chroot", target, "update-initramfs", "-u", "-k", "all"]
 

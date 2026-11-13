@@ -273,6 +273,9 @@ class CommandTests(unittest.TestCase):
         argv = commands.grub_install_command(plan, "/target")
         self.assertIn("--target=x86_64-efi", argv)
         self.assertIn("--efi-directory=/boot/efi", argv)
+        removable = commands.grub_removable_command(plan, "/target")
+        self.assertIn("--removable", removable)
+        self.assertIn("--no-nvram", removable)
 
     def test_secure_boot_grub_flag(self):
         from spiral_installer import commands

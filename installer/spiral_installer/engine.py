@@ -565,6 +565,8 @@ class Installer:
             if not os.path.ismount(self.target / "boot" / "efi"):
                 raise InstallError("/boot/efi is not mounted; refusing to install the bootloader")
         self._run(commands.grub_install_command(self.plan, str(self.target)), timeout=600)
+        if self.plan.firmware is Firmware.UEFI:
+            self._run(commands.grub_removable_command(self.plan, str(self.target)), timeout=600)
         self._run(commands.update_grub_command(str(self.target)), timeout=600)
         if not (self.target / "boot" / "grub" / "grub.cfg").is_file():
             raise InstallError("GRUB did not generate /boot/grub/grub.cfg")
@@ -595,6 +597,9 @@ class Installer:
             efi_dir = self.target / "boot" / "efi" / "EFI" / "Spiral"
             if not efi_dir.is_dir() or not list(efi_dir.glob("*.efi")):
                 problems.append("no EFI bootloader was installed under /boot/efi/EFI/Spiral")
+            fallback_dir = self.target / "boot" / "efi" / "EFI" / "BOOT"
+            if not fallback_dir.is_dir() or not list(fallback_dir.glob("*.efi")):
+                problems.append("no removable-media EFI fallback loader was installed")
         else:
             if not (self.target / "boot" / "grub" / "i386-pc" / "normal.mod").is_file():
                 problems.append("BIOS GRUB modules are missing")
