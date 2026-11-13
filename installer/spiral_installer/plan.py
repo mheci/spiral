@@ -651,7 +651,7 @@ class PlanBuilder:
             driver_modules=tuple(driver["modules"]),
             package_groups=tuple(group_ids),
             packages=tuple(all_packages),
-            foreign_architectures=tuple(foreign_architectures),
+            foreign_architectures=tuple(foreign_arches),
             snapshots=snapshots,
             btrfs_maintenance=maintenance,
         )
