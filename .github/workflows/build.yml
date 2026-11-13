@@ -1,0 +1,144 @@
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the validated ISO as a GitHub release
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      publish:
+        description: Publish the validated ISO as a GitHub release
+        type: boolean
+        default: false
+      force_publish:
+        description: Publish even when the previous build is unchanged
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "builder/**"
+      - "config/**"
+      - "profiles/**"
+      - "installer/**"
+      - "assets/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/weekly-rebuild.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-main
+  cancel-in-progress: false
+
+jobs:
+  iso:
+    name: Build and validate ISO
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          df -h
+
+      - name: Build ISO in a Debian trixie container
+        run: |
+          EPOCH=$(git log -1 --format=%ct)
+          docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE:/spiral" \
+            -w /spiral \
+            -e SOURCE_DATE_EPOCH="$EPOCH" \
+            debian:trixie \
+            bash -lc "./builder/scripts/install-build-deps.sh && ./builder/scripts/build-iso.sh --output /spiral/dist"
+
+      - name: Show artifact sizes
+        run: |
+          ls -lh dist/
+          df -h
+
+      - name: Upload ISO and checksums
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: spiral-iso
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish release
+    needs: iso
+    if: inputs.publish == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 1
+      - name: Download validated artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: spiral-iso
+          path: dist
+
+      - name: Verify checksums
+        working-directory: dist
+        run: sha256sum -c SHA256SUMS
+
+      - name: Compare against the previous release
+        id: compare
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          PREV_TAG=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName')
+          if [ -n "$PREV_TAG" ]; then
+            mkdir -p previous
+            gh release download "$PREV_TAG" --pattern build-manifest.json --dir previous || true
+          fi
+          python3 ../builder/scripts/should_publish.py \
+            --current build-manifest.json \
+            ${PREV_TAG:+--previous previous/build-manifest.json} \
+            ${{ inputs.force_publish && '--force' || '' }}
+          code=$?
+          if [ "$code" -ne 0 ] && [ "$code" -ne 10 ]; then
+            echo "update comparison failed with $code" >&2
+            exit "$code"
+          fi
+          echo "publish=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        if: steps.compare.outputs.publish == '0'
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45
+        with:
+          subject-path: "dist/*.iso"
+
+      - name: Publish GitHub release
+        if: steps.compare.outputs.publish == '0'
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPIRAL_GPG_PRIVATE_KEY: ${{ secrets.SPIRAL_GPG_PRIVATE_KEY }}
+          SPIRAL_GPG_PASSPHRASE: ${{ secrets.SPIRAL_GPG_PASSPHRASE }}
+        run: ../builder/scripts/release.sh --dist .
+
+      - name: Explain skipped publication
+        if: steps.compare.outputs.publish == '10'
+        run: echo "Build validated, but Debian and Spiral package state are unchanged. No release was created."

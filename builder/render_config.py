@@ -61,7 +61,7 @@ def boot_append(repo) -> str:
     return (
         "boot=live components "
         f"username={repo.build.live_username} hostname={repo.build.live_hostname} "
-        "console=tty0 console=ttyS0,115200 quiet splash"
+        "console=tty0 console=ttyS0,115200 quiet splash systemd.show_status=1"
     )
 
 

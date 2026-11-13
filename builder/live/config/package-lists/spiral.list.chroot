@@ -10,8 +10,9 @@ pkexec
 network-manager
 network-manager-gnome
 wpasupplicant
-task-xfce-desktop
+xfce4
 xfce4-terminal
+thunar
 lightdm
 lightdm-gtk-greeter
 xorg
