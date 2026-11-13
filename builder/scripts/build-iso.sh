@@ -123,7 +123,11 @@ $SUDO lb config noauto \
     --firmware-chroot true \
     --memtest memtest86+
 
-$SUDO -E lb build 2>&1 | tee "$WORK/build.log"
+if [ -n "$SUDO" ]; then
+    $SUDO -E lb build 2>&1 | tee "$WORK/build.log"
+else
+    lb build 2>&1 | tee "$WORK/build.log"
+fi
 
 RAW_ISO=$(find "$WORK" -maxdepth 1 -type f -name '*.iso' | head -n 1)
 if [ -z "$RAW_ISO" ]; then
