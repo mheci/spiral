@@ -100,7 +100,9 @@ The password file must not be readable by group or others. Unattended files may 
 
 ## Encryption and recovery
 
-LUKS2 encrypts the root partition. `/boot` stays unencrypted so GRUB can load the kernel and initramfs without a second GRUB crypto stack. At boot, the initramfs asks for the passphrase.
+LUKS2 encrypts the root partition. `/boot` stays unencrypted so GRUB can load the kernel and initramfs without a second GRUB crypto stack. At boot, the initramfs asks for the passphrase. The CI install test confirms this prompt and a successful unlock.
+
+UEFI installations also write a removable-media fallback loader under `EFI/BOOT`. This keeps the installed disk bootable when firmware ignores a new NVRAM entry.
 
 There is no recovery key and no backdoor. If the passphrase is lost, the data is unrecoverable. The installer states this as a critical warning.
 

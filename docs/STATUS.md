@@ -22,20 +22,22 @@ This file is the honest project ledger. A checked box requires evidence, not cod
 - [x] GitHub Actions unit and package checks
 - [x] ISO build workflow with ISO structural validation
 - [x] Weekly and release workflows
-
-## Implemented, validation pending
-
 - [x] Full ISO build in GitHub Actions
 - [x] UEFI QEMU boot smoke test
 - [x] BIOS QEMU boot smoke test
-- [ ] Complete installation in a disposable VM
-- [ ] Reboot into the installed system
-- [ ] EXT4 installation in a disposable VM
-- [ ] BTRFS installation in a disposable VM
-- [ ] BTRFS subvolume layout verified after boot
-- [ ] BTRFS compression verified with `compsize` or `/proc/mounts`
+- [x] Complete EXT4 installation in a disposable VM
+- [x] Complete BTRFS installation in a disposable VM
+- [x] Complete UEFI installation in a disposable VM
+- [x] Complete LUKS2 installation and passphrase unlock
+- [x] Reboot into the installed system and log in
+- [x] BTRFS subvolume layout verified after boot
+- [x] BTRFS compression mount option observed on the installed root
+- [x] ZRAM swap verified after boot
+- [x] Published release with checksums and provenance
+
+## Implemented, validation pending
+
 - [ ] BTRFS swapfile verified with `swapon --show`
-- [ ] LUKS2 boot and passphrase prompt
 - [ ] Snapper timers verified after boot
 - [ ] NVIDIA proprietary driver load on physical hardware
 - [ ] MOK enrollment on a Secure Boot machine

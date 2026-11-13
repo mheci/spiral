@@ -72,7 +72,7 @@ Each phase logs start and completion. A failure stops the next phase, records th
 
 ## Boot chain
 
-- UEFI: Debian signed shim and GRUB packages are installed, `grub-install` targets `x86_64-efi`, and `/boot/efi` must be a mountpoint. The ESP is a 512 MiB FAT32 partition.
+- UEFI: Debian signed shim and GRUB packages are installed, `grub-install` targets `x86_64-efi`, and `/boot/efi` must be a mountpoint. The ESP is a 512 MiB FAT32 partition. A second `grub-install --removable --no-nvram` writes the fallback loader under `EFI/BOOT`, so the disk still boots when firmware refuses or loses the NVRAM entry.
 - BIOS with GPT: a 1 MiB BIOS boot partition is created and `grub-install --target=i386-pc` writes to the disk.
 - BIOS with MBR: the disk uses a DOS label and GRUB embeds in the MBR gap.
 - Encrypted root: `/boot` is a separate unencrypted EXT4 partition, the root partition is LUKS2 with Argon2id, and `/etc/crypttab` is written before initramfs generation.

@@ -23,24 +23,30 @@ The project is an alpha. It does not yet claim production readiness. The status 
 | Area | State | Evidence |
 | --- | --- | --- |
 | Debian release discovery and signature verification | Implemented | Unit tests for parsing, CI uses `gpgv` during build |
-| Live ISO construction | Implemented and CI-validated | GitHub Actions build run 43371590708, 1.45 GiB ISO |
-| UEFI and BIOS boot entries | Implemented | Structural ISO validation checks GRUB labels, kernel paths and El Torito entries |
+| Live ISO construction | Implemented and CI-validated | Build run 43394181924, 1.5 GiB ISO, structural validation passed |
+| UEFI and BIOS boot entries | Implemented and boot-tested | QEMU UEFI and BIOS boot smoke tests passed |
 | Hardware detection | Implemented | Parser unit tests with fixture output |
-| BTRFS layouts, compression, swapfile rules | Implemented | Unit tests |
+| BTRFS layouts, compression, swapfile rules | Implemented, partial validation | Unit tests; subvolumes and ZRAM verified in a VM install |
 | Installation planning and confirmation | Implemented | Unit tests |
-| Terminal installer | Implemented | Unit tests cover the shared backend; full install not yet run in CI |
+| Terminal installer | Implemented and install-tested | EXT4, BTRFS, UEFI and LUKS paths passed |
 | Graphical installer | Implemented, not validated | GTK4 wizard sharing the plan builder; launch from the live desktop |
-| EXT4, BTRFS, XFS installation | Implemented, hardware validation pending | Requires a disposable VM run |
-| LUKS2 installation | Implemented, hardware validation pending | Separate `/boot`, crypttab and initramfs |
+| EXT4 installation | Implemented and VM-validated | Boot, reboot and login checks |
+| BTRFS installation | Implemented and VM-validated | Boot, reboot, subvolume and fstab checks |
+| XFS installation | Implemented, not VM-validated | Package and command paths only |
+| UEFI installation | Implemented and VM-validated | Removable-media fallback loader plus firmware entry |
+| LUKS2 installation | Implemented and VM-validated | Separate `/boot`, crypttab, initramfs passphrase prompt |
 | NVIDIA, AMD and Intel driver selection | Implemented, hardware validation pending | Package availability and Secure Boot policy are tested |
 | Desktop profiles | Implemented, hardware validation pending | Every package is checked against Debian Stable in CI |
-| Automated installation test | Implemented, running | QEMU harness installs EXT4 and BTRFS, reboots and checks the result |
+| Automated installation test | Implemented and passing | EXT4 BIOS, BTRFS BIOS, EXT4 UEFI, EXT4 LUKS in QEMU |
+| Snapshots and swapfile | Implemented, not VM-validated | Snapper, scrub timer and BTRFS swapfile paths |
 | Manual partitioning, LVM, RAID, dual-boot reuse | Not implemented | Guided whole-disk installation only |
 | Offline package repository on the ISO | Installer path implemented, builder disabled | `build.offline.enabled` is false |
 | Secure Boot compatibility with third-party modules | Policy implemented, not validated | MOK enrollment required for DKMS modules |
 | ARM64 | Not implemented | Primary architecture is AMD64 |
 
 A feature is not called verified because code exists. The right column says what has actually run.
+
+Latest verified run: 2026-11-13. ISO build 43394181924, installation suite 43462984605. Both are in GitHub Actions.
 
 ## Requirements
 
