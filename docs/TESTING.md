@@ -51,7 +51,9 @@ A structural pass is not a boot test and is not an installation test.
 
 `builder/scripts/smoke-qemu.sh` boots the ISO under QEMU. The `vm-test` workflow runs it against the latest successful build artifact in UEFI mode with OVMF and BIOS mode with SeaBIOS, weekly and on demand. It passes when the serial log reaches a systemd target and no kernel panic appears.
 
-A complete installation test still needs:
+The `install-test` workflow goes further. It creates a 25 GiB disposable virtio disk, boots the live ISO under BIOS, waits for the serial autologin console, reads the required confirmation phrase from the installer, runs the unattended install for EXT4 or BTRFS, reboots, logs into the installed system and checks the hostname, root filesystem, systemd state, ZRAM swap and, for BTRFS, the subvolume list and fstab. The ISO carries test-only choices and a test password under `/usr/share/spiral/test`; these are not installed into the target and are not credentials for a real system.
+
+The harness does not yet cover UEFI installation, LUKS unlock, Snapper timers, desktop sessions or NVIDIA hardware. A complete installation test still needs:
 
 - a disposable virtual disk
 - serial or graphical automation of the installer

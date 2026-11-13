@@ -26,12 +26,12 @@ This file is the honest project ledger. A checked box requires evidence, not cod
 ## Implemented, validation pending
 
 - [x] Full ISO build in GitHub Actions
-- [ ] UEFI QEMU boot smoke test
-- [ ] BIOS QEMU boot smoke test
+- [x] UEFI QEMU boot smoke test
+- [x] BIOS QEMU boot smoke test
 - [ ] Complete installation in a disposable VM
 - [ ] Reboot into the installed system
-- [ ] EXT4 installation on real or virtual hardware
-- [ ] BTRFS installation on real or virtual hardware
+- [ ] EXT4 installation in a disposable VM
+- [ ] BTRFS installation in a disposable VM
 - [ ] BTRFS subvolume layout verified after boot
 - [ ] BTRFS compression verified with `compsize` or `/proc/mounts`
 - [ ] BTRFS swapfile verified with `swapon --show`

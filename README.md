@@ -34,7 +34,7 @@ The project is an alpha. It does not yet claim production readiness. The status 
 | LUKS2 installation | Implemented, hardware validation pending | Separate `/boot`, crypttab and initramfs |
 | NVIDIA, AMD and Intel driver selection | Implemented, hardware validation pending | Package availability and Secure Boot policy are tested |
 | Desktop profiles | Implemented, hardware validation pending | Every package is checked against Debian Stable in CI |
-| Automated full installation test | Not implemented | QEMU boot smoke test workflow exists; installation harness is not built |
+| Automated installation test | Implemented, running | QEMU harness installs EXT4 and BTRFS, reboots and checks the result |
 | Manual partitioning, LVM, RAID, dual-boot reuse | Not implemented | Guided whole-disk installation only |
 | Offline package repository on the ISO | Installer path implemented, builder disabled | `build.offline.enabled` is false |
 | Secure Boot compatibility with third-party modules | Policy implemented, not validated | MOK enrollment required for DKMS modules |

@@ -60,6 +60,10 @@ No password, passphrase, signing key or token is stored in the repository.
 
 The live account uses passwordless sudo. This is acceptable on a disposable live medium and is not carried into the installed system. The installed root account is locked and the created user is in `sudo`.
 
+The live image also enables autologin on the serial console for headless recovery and automated VM testing. Anyone with physical access to the serial port has the same access as the live desktop session. The installed system does not inherit this autologin.
+
+The ISO includes a test-only unattended choices file and a known test password under `/usr/share/spiral/test` for the integration test. They are not installed into the target system and must never be used as real credentials. The release notes and this document both state that they exist.
+
 ## Destructive operations
 
 - The plan must pass validation before execution.
