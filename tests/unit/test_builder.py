@@ -86,6 +86,33 @@ class PackageCheckTests(unittest.TestCase):
         self.assertIn("debootstrap", names)
         self.assertIn("live-boot", names)
 
+    def test_should_publish_comparison(self):
+        module = load_module("should_publish", ROOT / "builder" / "scripts" / "should_publish.py")
+        previous = {
+            "debian": {"codename": "trixie", "version": "13.0"},
+            "package_manifest": {"sha256": "aaa"},
+            "git_commit": "abc",
+        }
+        current = {
+            "debian": {"codename": "trixie", "version": "13.0"},
+            "package_manifest": {"sha256": "bbb"},
+            "git_commit": "abc",
+        }
+        self.assertEqual(module.comparable(previous), module.comparable(previous))
+        self.assertNotEqual(module.comparable(previous), module.comparable(current))
+
+    def test_action_pin_parser(self):
+        module = load_module("check_pins", ROOT / "builder" / "scripts" / "check_action_pins.py")
+        text = (
+            "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+            "      - uses: ./.github/workflows/local.yml\n"
+        )
+        pins = module.pinned_actions(text)
+        self.assertEqual(
+            pins,
+            {("actions", "checkout"): "11d5960a326750d5838078e36cf38b85af677262"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

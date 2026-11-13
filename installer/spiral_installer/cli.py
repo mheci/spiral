@@ -440,6 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--codename", help="Debian codename for a dry run without release metadata")
     parser.add_argument("--unattended", metavar="FILE", help="JSON file with installer choices")
+    parser.add_argument("--gui", action="store_true", help="use the graphical installer")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and commands, change nothing")
     parser.add_argument("--check-packages", action="store_true", help="refresh package metadata before planning")
     parser.add_argument("--confirm", help="exact destructive confirmation phrase (unattended mode)")
@@ -560,6 +561,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         hardware = collect_hardware(dict(repo.hardware.gpu_vendors))
         if not args.dry_run and os.geteuid() != 0:
             raise SpiralError("the installer must run as root")
+        if args.gui:
+            if args.dry_run:
+                raise SpiralError("--gui cannot be combined with --dry-run")
+            from .gui import run_gui
+
+            return run_gui(repo, hardware, release)
         if args.unattended:
             choices = load_choices(args.unattended)
             wizard = None

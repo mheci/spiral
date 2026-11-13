@@ -26,6 +26,7 @@ apt-get install -y --no-install-recommends \
     debian-archive-keyring \
     gnupg \
     python3 \
+    git \
     ca-certificates \
     curl \
     xz-utils \

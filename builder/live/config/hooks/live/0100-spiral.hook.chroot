@@ -34,9 +34,9 @@ cat > /usr/share/applications/spiral-installer.desktop <<'EOF'
 Type=Application
 Name=Install Spiral
 Comment=Install Spiral to this computer
-Exec=spiral-installer
+Exec=spiral-installer-gui
 Icon=spiral
-Terminal=true
+Terminal=false
 Categories=System;Installer;
 EOF
 
@@ -45,7 +45,10 @@ import json
 print(json.load(open("/usr/share/spiral/build-info.json"))["live_username"])
 PY
 )
-printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$LIVE_USER" > /etc/sudoers.d/spiral-live
+{
+    printf 'Defaults:%s env_keep += "DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS"\n' "$LIVE_USER"
+    printf '%s ALL=(ALL) NOPASSWD: SETENV: ALL\n' "$LIVE_USER"
+} > /etc/sudoers.d/spiral-live
 chmod 0440 /etc/sudoers.d/spiral-live
 
 cat > /etc/issue <<'EOF'

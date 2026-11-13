@@ -84,6 +84,7 @@ cp -a "$ROOT/config" "$ROOT/profiles" "$INCLUDES/usr/share/spiral/"
 cp -a "$ROOT/assets/branding" "$INCLUDES/usr/share/spiral/branding"
 cp "$ROOT/VERSION" "$INCLUDES/usr/share/spiral/VERSION"
 install -m 0755 "$ROOT/builder/live/spiral-installer" "$INCLUDES/usr/bin/spiral-installer"
+install -m 0755 "$ROOT/builder/live/spiral-installer-gui" "$INCLUDES/usr/bin/spiral-installer-gui"
 install -m 0755 "$ROOT/builder/live/config/hooks/live/0100-spiral.hook.chroot" \
     "$CONFIG/hooks/live/0100-spiral.hook.chroot"
 

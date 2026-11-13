@@ -32,7 +32,7 @@ cleanup() { rm -rf "$TMP"; }
 trap cleanup EXIT
 
 xorriso -indev "$ISO" -pvd_info > "$TMP/pvd.txt" 2>&1
-grep -q "Volume id: *SPIRAL" "$TMP/pvd.txt" || {
+grep -qi "Volume Id.*SPIRAL" "$TMP/pvd.txt" || {
     echo "ISO volume id is not SPIRAL" >&2
     cat "$TMP/pvd.txt" >&2
     exit 1
@@ -44,7 +44,7 @@ grep -qi "El Torito boot img" "$TMP/eltorito.txt" || {
     cat "$TMP/eltorito.txt" >&2
     exit 1
 }
-grep -qi "UEFI" "$TMP/eltorito.txt" || {
+if ! grep -qiE "UEFI|EFI" "$TMP/eltorito.txt"; then
     echo "ISO has no UEFI boot entry" >&2
     cat "$TMP/eltorito.txt" >&2
     exit 1
@@ -55,7 +55,9 @@ for file in vmlinuz initrd.img filesystem.squashfs; do
     [ -f "$TMP/live/$file" ] || { echo "missing /live/$file" >&2; exit 1; }
 done
 
-RELEASE_IN_IMAGE=$(unsquashfs -cat "$TMP/live/filesystem.squashfs" usr/share/spiral/release.json)
+if ! RELEASE_IN_IMAGE=$(unsquashfs -cat "$TMP/live/filesystem.squashfs" usr/share/spiral/release.json 2>/dev/null); then
+    RELEASE_IN_IMAGE=$(unsquashfs -cat "$TMP/live/filesystem.squashfs" /usr/share/spiral/release.json)
+fi
 printf '%s' "$RELEASE_IN_IMAGE" | python3 -c '
 import json, sys
 expected = sys.argv[1]

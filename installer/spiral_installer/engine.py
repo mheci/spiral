@@ -64,6 +64,7 @@ class Installer:
         target: Optional[str] = None,
         log_path: Optional[str] = None,
         echo: bool = True,
+        progress: Optional[Callable[[dict], None]] = None,
     ) -> None:
         self.repo = repo
         self.plan = plan
@@ -72,6 +73,7 @@ class Installer:
         self.target = Path(target or repo.installer.target)
         self.log_path = log_path or str(Path(repo.installer.log_dir) / "install.log")
         self.echo = echo
+        self.progress = progress
         self.log: Optional[InstallLog] = None
         self.runner: Optional[CommandRunner] = None
         self.completed: list[str] = []
@@ -81,7 +83,7 @@ class Installer:
     def install(self) -> InstallResult:
         if not self.target.is_absolute() or str(self.target) == "/":
             raise InstallError("target directory must be an absolute path other than /")
-        log = InstallLog(self.log_path, echo=self.echo)
+        log = InstallLog(self.log_path, echo=self.echo, callback=self.progress)
         self.log = log
         self.runner = CommandRunner(log, echo_output=False)
         log.event(

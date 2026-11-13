@@ -1,0 +1,42 @@
+name: dependency-update
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  actions:
+    name: Check pinned action releases
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check pins
+        id: pins
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 builder/scripts/check_action_pins.py > report.md
+          code=$?
+          cat report.md
+          if [ "$code" -ne 0 ] && [ "$code" -ne 1 ]; then exit "$code"; fi
+          echo "changes=$code" >> "$GITHUB_OUTPUT"
+      - name: Open or update the dependency issue
+        if: steps.pins.outputs.changes == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Dependency update: pinned GitHub Actions"
+          BODY=$(printf 'Automated weekly check. Review each SHA update and apply it in a pull request.\n\n%s\n' "$(cat report.md)")
+          NUMBER=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+          if [ -n "$NUMBER" ]; then
+            gh issue edit "$NUMBER" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label dependencies
+          fi
