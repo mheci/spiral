@@ -22,6 +22,7 @@ import pexpect
 LIVE_PROMPT = r"spiral@spiral:[^$]*\$ "
 INSTALL_PROMPT = r"testuser@spiral-test:[^$]*\$ "
 PASSWORD = "spiral-test-password"
+LUKS_PASSPHRASE = "spiral-test-luks-passphrase"
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 
@@ -33,6 +34,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iso", required=True)
     parser.add_argument("--filesystem", choices=("ext4", "btrfs"), required=True)
+    parser.add_argument("--choices", required=True, help="choices file name under /usr/share/spiral/test")
+    parser.add_argument("--firmware", choices=("bios", "uefi"), default="bios")
+    parser.add_argument("--luks", action="store_true")
     parser.add_argument("--workdir", required=True)
     parser.add_argument("--boot-timeout", type=int, default=600)
     parser.add_argument("--install-timeout", type=int, default=5400)
@@ -65,6 +69,24 @@ def main() -> int:
         "-boot", "order=c,once=d",
         "-nic", "user,model=virtio-net-pci",
     ]
+    if args.firmware == "uefi":
+        candidates = (
+            (Path("/usr/share/OVMF/OVMF_CODE_4M.fd"), Path("/usr/share/OVMF/OVMF_VARS_4M.fd")),
+            (Path("/usr/share/OVMF/OVMF_CODE.fd"), Path("/usr/share/OVMF/OVMF_VARS.fd")),
+            (Path("/usr/share/ovmf/OVMF.fd"), Path("/usr/share/ovmf/OVMF_VARS.fd")),
+        )
+        code, vars_source = next(
+            ((code, variables) for code, variables in candidates if code.is_file() and variables.is_file()),
+            (None, None),
+        )
+        if code is None:
+            raise RuntimeError("OVMF firmware was not found")
+        variables = workdir / "OVMF_VARS.fd"
+        shutil.copyfile(vars_source, variables)
+        command += [
+            "-drive", f"if=pflash,format=raw,readonly=on,file={code}",
+            "-drive", f"if=pflash,format=raw,file={variables}",
+        ]
     if os.access("/dev/kvm", os.R_OK | os.W_OK):
         command += ["-enable-kvm", "-cpu", "host"]
 
@@ -82,10 +104,11 @@ def main() -> int:
         child.expect(LIVE_PROMPT, timeout=args.boot_timeout)
         print("live environment reached")
 
-        choices = f"/usr/share/spiral/test/choices-{args.filesystem}.json"
+        choices = f"/usr/share/spiral/test/{args.choices}"
         base_command = (
             f"sudo spiral-installer --unattended {choices} "
             "--user-password-file /usr/share/spiral/test/password.txt "
+            "--luks-passphrase-file /usr/share/spiral/test/luks.txt "
             "--log /tmp/install.log"
         )
 
@@ -120,9 +143,16 @@ def main() -> int:
         results["installation_complete"] = True
 
         child.sendline("sudo reboot")
-        boot = child.expect(["spiral-test login:"], timeout=args.boot_timeout)
-        if boot != 0:
-            raise RuntimeError("the installed system did not reach a login prompt")
+        if args.luks:
+            unlocked = child.expect(
+                [r"(?i)(please unlock disk|enter passphrase)", "spiral-test login:"],
+                timeout=args.boot_timeout,
+            )
+            if unlocked == 0:
+                child.sendline(LUKS_PASSPHRASE)
+                child.expect("spiral-test login:", timeout=180)
+        else:
+            child.expect("spiral-test login:", timeout=args.boot_timeout)
         child.sendline("testuser")
         child.expect("Password:", timeout=60)
         child.sendline(PASSWORD)
