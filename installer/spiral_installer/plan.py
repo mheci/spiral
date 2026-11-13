@@ -498,7 +498,7 @@ class PlanBuilder:
                 f"kernel profile '{kernel.id}' does not support {self.repo.debian.architecture}"
             )
         kernel_packages, fallback_packages = self._kernel_packages(kernel)
-        missing_kernel = self._missing(kernel.packages)
+        missing_kernel = self._missing(kernel_packages)
         if missing_kernel:
             raise ValidationError(
                 f"kernel profile '{kernel.id}' is unavailable on Debian {self.release.codename}: "

@@ -27,8 +27,10 @@ from .support import make_disk, make_release, make_repo
 class FakeResolver:
     def __init__(self, missing=()):
         self.missing_packages = set(missing)
+        self.queried = set()
 
     def missing(self, packages):
+        self.queried.update(packages)
         return sorted(set(packages) & self.missing_packages)
 
 
@@ -161,6 +163,12 @@ class PlanTests(unittest.TestCase):
     def test_missing_desktop_package_is_fatal(self):
         with self.assertRaises(ValidationError):
             self.build(resolver=FakeResolver({"task-gnome-desktop"}))
+
+    def test_kernel_placeholders_are_expanded_before_availability_check(self):
+        resolver = FakeResolver()
+        self.build(resolver=resolver)
+        self.assertIn("linux-image-amd64", resolver.queried)
+        self.assertNotIn("linux-image-{arch}", resolver.queried)
 
     def test_optional_driver_package_is_dropped(self):
         gpu = nvidia_gpu()
