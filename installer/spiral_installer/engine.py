@@ -295,7 +295,8 @@ class Installer:
     def phase_storage(self) -> None:
         if self.plan.encryption.enabled and self.secrets.luks_passphrase is None:
             raise InstallError("an encryption passphrase is required")
-        self._run(commands.partition_commands(self.plan), timeout=600)
+        for argv in commands.partition_commands(self.plan):
+            self._run(argv, timeout=600)
         for part in self.plan.partitions:
             if part.fs == "none":
                 continue

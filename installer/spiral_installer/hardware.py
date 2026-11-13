@@ -17,7 +17,7 @@ from .models import (
     NetworkAdapter,
     Partition,
 )
-from .util import parse_kib, read_text, run_capture
+from .util import parse_kib, read_text, run_capture, which
 
 PCI_DISPLAY_CLASSES = ("0300", "0301", "0302", "0380")
 PCI_USB_CLASS = "0c03"
