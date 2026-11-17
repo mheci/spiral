@@ -131,24 +131,44 @@ def main() -> int:
         available |= names
 
     live_list = read_live_list(root / "builder" / "live" / "config" / "package-lists" / "spiral.list.chroot")
+    # External repo packages are not in Debian archive - exempt from hard check
+    external_packages: set[str] = set()
+    for kernel in repo.profiles.kernels.values():
+        if getattr(kernel, "external_repo", None):
+            external_packages |= expand(kernel.packages, args.architecture)
+    for driver in repo.profiles.drivers.values():
+        if getattr(driver, "external_repo", None):
+            external_packages |= expand(driver.packages, args.architecture)
+    for group in repo.profiles.packages.values():
+        if getattr(group, "external_repo", None):
+            external_packages |= expand(group.packages, args.architecture)
+            external_packages |= expand(getattr(group, "required_available", []), args.architecture)
+
     hard: set[str] = set(live_list)
     for group_id in repo.installer.default_groups:
-        hard |= expand(repo.profiles.package_group(group_id).packages, args.architecture)
+        grp = repo.profiles.package_group(group_id)
+        if getattr(grp, "external_repo", None):
+            continue
+        hard |= expand(grp.packages, args.architecture)
     for desktop in repo.profiles.desktops.values():
         if desktop.status == "stable":
             hard |= expand(desktop.packages, args.architecture)
             if desktop.display_manager:
                 hard.add(desktop.display_manager)
     for kernel in repo.profiles.kernels.values():
+        if getattr(kernel, "external_repo", None):
+            continue
         hard |= expand(kernel.packages, args.architecture)
     for driver in repo.profiles.drivers.values():
-        if driver.status == "stable":
+        if driver.status == "stable" and not getattr(driver, "external_repo", None):
             hard |= expand(driver.packages, args.architecture)
     for filesystem in repo.profiles.filesystems.values():
         hard |= set(filesystem.tools)
 
     optional: set[str] = set()
     for group in repo.profiles.packages.values():
+        if getattr(group, "external_repo", None):
+            continue
         optional |= expand(group.packages, args.architecture)
     for desktop in repo.profiles.desktops.values():
         if desktop.status != "stable":
@@ -157,6 +177,8 @@ def main() -> int:
         if driver.status != "stable":
             optional |= expand(driver.packages, args.architecture)
 
+    hard -= external_packages
+    optional -= external_packages
     missing_hard = sorted(hard - available)
     missing_optional = sorted(optional - available - hard)
     if missing_optional:

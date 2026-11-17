@@ -772,8 +772,8 @@ class Installer:
             deb_tmp = self.target / "tmp" / "cuda-keyring.deb"
             deb_tmp.parent.mkdir(parents=True, exist_ok=True)
             fetched = False
-            for cmd in (  # nosec B108 - /tmp is correct for chroot and installer transient files
-                ["chroot", str(self.target), "curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", "/tmp/cuda-keyring.deb"],
+            for cmd in (
+                ["chroot", str(self.target), "curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", "/tmp/cuda-keyring.deb"],  # nosec B108
                 ["curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", str(deb_tmp)],
             ):
                 try:
@@ -800,8 +800,8 @@ class Installer:
             tmp_key = self.target / "tmp" / f"{repo.id}.key"
             tmp_key.parent.mkdir(parents=True, exist_ok=True)
             fetched = False
-            for cmd in (  # nosec B108 - /tmp is correct for chroot and installer transient files
-                ["chroot", str(self.target), "curl", "-fsSL", key_url, "-o", f"/tmp/{repo.id}.key"],
+            for cmd in (
+                ["chroot", str(self.target), "curl", "-fsSL", key_url, "-o", f"/tmp/{repo.id}.key"],  # nosec B108
                 ["curl", "-fsSL", key_url, "-o", str(tmp_key)],
             ):
                 try:
