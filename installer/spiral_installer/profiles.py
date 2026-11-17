@@ -61,6 +61,10 @@ class KernelProfile:
     requires_packages_available: tuple[str, ...]
     package_groups: tuple[str, ...]
     notes: str
+    external_repo: Optional[str] = None
+    secure_boot: str = "signed_in_kernel"
+    status: str = "stable"
+    experimental: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,6 +95,8 @@ class DriverProfile:
     fallback: Optional[str]
     status: str
     notes: str
+    external_repo: Optional[str] = None
+    experimental: bool = False
 
 
 @dataclass(frozen=True)
@@ -104,6 +110,9 @@ class PackageGroup:
     architectures: tuple[str, ...]
     default: bool
     offline: bool
+    external_repo: Optional[str] = None
+    status: str = "stable"
+    experimental: bool = False
 
 
 @dataclass(frozen=True)
@@ -300,6 +309,11 @@ def _kernel(path: Path, data: dict) -> KernelProfile:
             "requires_packages_available",
             "package_groups",
             "notes",
+            "external_repo",
+            "secure_boot",
+            "status",
+            "experimental",
+            "fallback",
         },
         {"id", "label", "description", "packages", "arches", "notes"},
     )
@@ -321,6 +335,10 @@ def _kernel(path: Path, data: dict) -> KernelProfile:
         requires_packages_available=tuple(requires),
         package_groups=tuple(groups),
         notes=v.text(data, "notes", ctx, default=""),
+        external_repo=v.optional_text(data, "external_repo", ctx),
+        secure_boot=v.text(data, "secure_boot", ctx, choices=("signed_in_kernel", "requires_enrollment", "unsigned"), default="signed_in_kernel"),
+        status=v.text(data, "status", ctx, choices=("stable", "experimental", "conditional"), default="stable"),
+        experimental=(v.text(data, "status", ctx, choices=("stable", "experimental", "conditional"), default="stable") == "experimental"),
     )
 
 
@@ -380,6 +398,8 @@ def _driver(path: Path, data: dict) -> DriverProfile:
             "fallback",
             "status",
             "notes",
+            "external_repo",
+            "experimental",
         },
         {
             "id",
@@ -416,8 +436,10 @@ def _driver(path: Path, data: dict) -> DriverProfile:
             choices=("signed_in_kernel", "requires_enrollment", "not_applicable"),
         ),
         fallback=v.optional_text(data, "fallback", ctx),
-        status=v.text(data, "status", ctx, choices=("stable", "conditional")),
+        status=v.text(data, "status", ctx, choices=("stable", "conditional", "experimental")),
         notes=v.text(data, "notes", ctx, default=""),
+        external_repo=v.optional_text(data, "external_repo", ctx),
+        experimental=(v.text(data, "status", ctx, choices=("stable", "conditional", "experimental"), default="stable") == "experimental"),
     )
 
 
@@ -437,6 +459,9 @@ def _package_group(path: Path, data: dict) -> PackageGroup:
             "default",
             "offline",
             "notes",
+            "external_repo",
+            "status",
+            "experimental",
         },
         {"id", "label", "category", "description", "packages", "default", "offline"},
     )
@@ -456,6 +481,9 @@ def _package_group(path: Path, data: dict) -> PackageGroup:
         architectures=tuple(arches),
         default=v.boolean(data, "default", ctx),
         offline=v.boolean(data, "offline", ctx),
+        external_repo=v.optional_text(data, "external_repo", ctx),
+        status=v.text(data, "status", ctx, choices=("stable", "conditional", "experimental"), default="stable"),
+        experimental=(v.text(data, "status", ctx, choices=("stable", "conditional", "experimental"), default="stable") == "experimental"),
     )
 
 

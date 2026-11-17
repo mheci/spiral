@@ -1,0 +1,13 @@
+{
+  "id": "xanmod-lts",
+  "label": "XanMod LTS (long-term support)",
+  "description": "XanMod LTS kernel, conservative updates with sched_ext support.",
+  "packages": ["linux-image-xanmod-lts-x64v3", "linux-headers-xanmod-lts-x64v3"],
+  "fallback_packages": [],
+  "arches": ["amd64"],
+  "requires_packages_available": ["linux-image-xanmod-lts-x64v3"],
+  "status": "stable",
+  "external_repo": "xanmod",
+  "secure_boot": "requires_enrollment",
+  "notes": "LTS variant for stability."
+}

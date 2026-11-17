@@ -286,8 +286,35 @@ def render_fstab(
     return "\n".join(lines) + "\n"
 
 
-def render_crypttab(luks_uuid: str, mapper: str) -> str:
+def render_crypttab(luks_uuid: str, mapper: str, tpm_unlock: bool = False, tpm_pcrs: str = "7") -> str:
+    if tpm_unlock:
+        # Use systemd-cryptsetup TPM2 token. The PCR set is intentionally simple (7 = Secure Boot state).
+        # Users who need a different PCR policy can edit /etc/crypttab after install.
+        pcrs = tpm_pcrs.strip() if tpm_pcrs else "7"
+        # Validate PCR list is safe for crypttab (digits and commas only, non-empty)
+        if not pcrs or any(c not in "0123456789," for c in pcrs):
+            pcrs = "7"
+        return f"{mapper} UUID={luks_uuid} none luks,tpm2-device=auto,tpm2-pcrs={pcrs}\n"
     return f"{mapper} UUID={luks_uuid} none luks\n"
+
+
+def tpm_enroll_command(device: str, tpm_pcrs: str = "7") -> list[str]:
+    """Return argv for systemd-cryptenroll enrolling TPM2 token."""
+    pcrs = tpm_pcrs.strip() if tpm_pcrs else "7"
+    if not pcrs or any(c not in "0123456789," for c in pcrs):
+        pcrs = "7"
+    return [
+        "systemd-cryptenroll",
+        f"--tpm2-device=auto",
+        f"--tpm2-pcrs={pcrs}",
+        "--unlock-key-file=-",
+        device,
+    ]
+
+
+def clevis_tpm_enroll_command(device: str) -> list[str]:
+    """Fallback using clevis for older systems without systemd-cryptenroll TPM2 support."""
+    return ["clevis", "luks", "bind", "-d", device, "tpm2", '{}']
 
 
 def render_sources_list(

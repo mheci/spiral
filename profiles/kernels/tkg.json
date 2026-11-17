@@ -1,0 +1,12 @@
+{
+  "id": "tkg",
+  "label": "TKG (Frogging-Family, source build)",
+  "description": "TKG kernel built from source via Frogging-Family linux-tkg. No binary repo, experimental, requires manual build helper.",
+  "packages": [],
+  "fallback_packages": [],
+  "arches": ["amd64"],
+  "status": "experimental",
+  "external_repo": "tkg",
+  "secure_boot": "unsigned",
+  "notes": "No APT packages; use /usr/local/sbin/tkg-build.sh after install. DKMS may need patching for newer kernels."
+}

@@ -34,8 +34,10 @@ fi
 if [ -n "${SPIRAL_GPG_PRIVATE_KEY:-}" ]; then
     printf '%s' "$SPIRAL_GPG_PRIVATE_KEY" | gpg --batch --import
     if [ -n "${SPIRAL_GPG_PASSPHRASE:-}" ]; then
-        gpg --batch --yes --pinentry-mode loopback --passphrase "$SPIRAL_GPG_PASSPHRASE" \
-            --armor --detach-sign "$DIST/SHA256SUMS"
+        # Pass the passphrase via fd 3, never on the command line where it
+        # would be visible in the process list.
+        gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
+            --armor --detach-sign "$DIST/SHA256SUMS" 3<<<"$SPIRAL_GPG_PASSPHRASE"
     else
         gpg --batch --yes --armor --detach-sign "$DIST/SHA256SUMS"
     fi

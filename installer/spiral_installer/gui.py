@@ -331,12 +331,36 @@ class WizardWindow:
             "disables the swap partition option to avoid leaking swap data."
         )
         box.append(self.encryption_note)
+        # TPM2 auto-unlock (UEFI only)
+        self.tpm_switch = Gtk.Switch()
+        self.tpm_switch.connect("notify::active", self._tpm_changed)
+        self.tpm_pcrs_entry = self._entry("7")
+        box.append(self._row("TPM2 auto-unlock (UEFI)", self.tpm_switch))
+        box.append(self._row("TPM PCRs", self.tpm_pcrs_entry))
+        box.append(self._label("TPM2 unlock requires UEFI firmware and a TPM2 chip. The passphrase stays as recovery key. PCR 7 = Secure Boot state is the default."))
         self._encryption_changed(self.encryption_switch, None)
+        self._tpm_changed(self.tpm_switch, None)
+
+    def _tpm_changed(self, switch, pspec) -> None:
+        tpm_active = switch.get_active() if hasattr(self, "tpm_switch") else False
+        if hasattr(self, "tpm_pcrs_entry"):
+            self.tpm_pcrs_entry.set_sensitive(tpm_active and self.encryption_switch.get_active())
 
     def _encryption_changed(self, switch, pspec) -> None:
         active = switch.get_active()
         self.luks_entry.set_sensitive(active)
         self.luks_repeat.set_sensitive(active)
+        if hasattr(self, "tpm_switch"):
+            self.tpm_switch.set_sensitive(active)
+            # TPM requires UEFI; disable switch on BIOS live boot
+            try:
+                is_uefi = self.hardware.firmware.value == "uefi"
+                if not is_uefi and active:
+                    self.tpm_switch.set_active(False)
+                    self.tpm_switch.set_sensitive(False)
+            except Exception:
+                pass
+            self._tpm_changed(self.tpm_switch, None)
         if active and "partition" in self.swap_ids:
             index = self.swap_ids.index("partition")
             if self.swap_dropdown.get_selected() == index:
@@ -413,6 +437,7 @@ class WizardWindow:
         box.append(self._row("Password", self.password_entry))
         box.append(self._row("Repeat password", self.password_repeat))
         box.append(self._row("Automatic login", self.autologin_switch))
+        box.append(self._label("GNOME (GDM) and KDE Plasma (SDDM) support automatic login. The session starts without a password; physical access means full access."))
 
     def _build_summary(self) -> None:
         box = self._page("summary", "Summary")
@@ -494,6 +519,11 @@ class WizardWindow:
         if not desktops:
             raise ValidationError("select at least one desktop profile, including minimal")
         groups = tuple(item for item, check in self.group_checks.items() if check.get_active())
+        # TPM PCRs handling: read entry if TPM active, else default
+        tpm_unlock = self.tpm_switch.get_active() if hasattr(self, "tpm_switch") else False
+        tpm_pcrs = self.tpm_pcrs_entry.get_text().strip() if hasattr(self, "tpm_pcrs_entry") else "7"
+        if not tpm_pcrs:
+            tpm_pcrs = "7"
         return InstallChoices(
             disk=self.disks[disk_index].stable_path,
             filesystem=filesystem,
@@ -501,6 +531,8 @@ class WizardWindow:
             compression=compression,
             swap=swap,
             encryption=self.encryption_switch.get_active(),
+            tpm_unlock=tpm_unlock,
+            tpm_pcrs=tpm_pcrs,
             kernel=kernel,
             desktops=desktops,
             driver=driver,
@@ -537,7 +569,14 @@ class WizardWindow:
         Gtk = self.Gtk
         try:
             choices = self._collect_choices()
-            builder = PlanBuilder(self.repo, self.hardware, self.release)
+            nvidia = detect_nvidia()
+            builder = PlanBuilder(
+                self.repo,
+                self.hardware,
+                self.release,
+                nvidia_package=nvidia.package,
+                nvidia_supported=nvidia.supported,
+            )
             plan = builder.build(choices)
         except (ValidationError, SpiralError) as exc:
             self.summary_view.get_buffer().set_text(f"Cannot build the installation plan:\n\n{exc}")
@@ -558,12 +597,12 @@ class WizardWindow:
                 f"Filesystem: {plan.filesystem_id}",
                 f"Compression: {plan.compression.mount_option or 'off'}",
                 f"Swap: {plan.swap.strategy.value}",
-                f"Encryption: {'LUKS2' if plan.encryption.enabled else 'disabled'}",
+                f"Encryption: {'LUKS2 + TPM2' if getattr(plan.encryption, 'tpm_unlock', False) else ('LUKS2' if plan.encryption.enabled else 'disabled')}",
                 f"Kernel: {plan.software.kernel_label}",
                 f"Desktop: {', '.join(plan.software.desktop_labels)}",
                 f"Driver: {plan.software.driver_label}",
                 f"Packages: {len(plan.software.packages)}",
-                f"User: {plan.user.username} on {plan.user.hostname}",
+                f"User: {plan.user.username} on {plan.user.hostname} autologin={plan.user.autologin}",
             ]
         )
         self.summary_view.get_buffer().set_text("\n".join(lines))
@@ -577,7 +616,14 @@ class WizardWindow:
 
     def _start_install(self) -> None:
         try:
-            self.plan = PlanBuilder(self.repo, self.hardware, self.release).build(self._collect_choices())
+            nvidia = detect_nvidia()
+            self.plan = PlanBuilder(
+                self.repo,
+                self.hardware,
+                self.release,
+                nvidia_package=nvidia.package,
+                nvidia_supported=nvidia.supported,
+            ).build(self._collect_choices())
         except (ValidationError, SpiralError) as exc:
             self._error(str(exc))
             return

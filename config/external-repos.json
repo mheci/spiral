@@ -1,0 +1,82 @@
+{
+  "nvidia-cuda": {
+    "id": "nvidia-cuda",
+    "label": "NVIDIA CUDA repository",
+    "url": "https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64",
+    "key_url": "https://developer.download.nvidia.com/compute/cuda/repos/debian13/x86_64/3bf863cc.pub",
+    "keyring_url_template": "https://developer.download.nvidia.com/compute/cuda/repos/{dist}/x86_64/cuda-keyring_1.1-1_all.deb",
+    "keyring_path": "/usr/share/keyrings/cuda-archive-keyring.gpg",
+    "signed_by_fingerprint": "A87109D1D94B86A3F2D5B37CEA8E59ECA8711D0CE",
+    "url_template": "https://developer.download.nvidia.com/compute/cuda/repos/{dist}/x86_64",
+    "dist_map": {
+      "trixie": "debian13",
+      "bookworm": "debian12",
+      "forky": "debian13"
+    },
+    "sources_line_template": "deb [signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/{dist}/x86_64 /",
+    "components": [""],
+    "signed_by": "/usr/share/keyrings/cuda-archive-keyring.gpg"
+  },
+  "xanmod": {
+    "id": "xanmod",
+    "label": "XanMod kernel repository",
+    "url": "https://deb.xanmod.org",
+    "key_url": "https://dl.xanmod.org/archive.key",
+    "keyring_path": "/usr/share/keyrings/xanmod-archive-keyring.gpg",
+    "signed_by_fingerprint": "AD438D1394389B8E410A79A6EAFD54A96E4B8782",
+    "url_template": "https://deb.xanmod.org",
+    "dist_map": {
+      "trixie": "releases",
+      "bookworm": "releases",
+      "forky": "releases"
+    },
+    "sources_line_template": "deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main",
+    "components": ["main"],
+    "signed_by": "/usr/share/keyrings/xanmod-archive-keyring.gpg"
+  },
+  "liquorix": {
+    "id": "liquorix",
+    "label": "Liquorix kernel repository",
+    "url": "https://liquorix.net/debian",
+    "key_url": "https://liquorix.net/liquorix-keyring.gpg",
+    "keyring_path": "/usr/share/keyrings/liquorix-archive-keyring.gpg",
+    "signed_by_fingerprint": "liquorix",
+    "url_template": "https://liquorix.net/debian",
+    "dist_map": {
+      "trixie": "trixie",
+      "bookworm": "bookworm",
+      "forky": "trixie"
+    },
+    "sources_line_template": "deb [signed-by=/usr/share/keyrings/liquorix-archive-keyring.gpg] https://liquorix.net/debian {codename} main",
+    "components": ["main"],
+    "signed_by": "/usr/share/keyrings/liquorix-archive-keyring.gpg"
+  },
+  "scx": {
+    "id": "scx",
+    "label": "SCX sched_ext tools (sid)",
+    "url": "https://example.com/scx",
+    "key_url": "https://example.com/scx.key",
+    "keyring_url_template": "https://example.com/scx.key",
+    "keyring_path": "/usr/share/keyrings/scx-archive-keyring.gpg",
+    "signed_by_fingerprint": "placeholder",
+    "url_template": "https://example.com/scx",
+    "dist_map": {},
+    "sources_line_template": "deb [signed-by=/usr/share/keyrings/scx-archive-keyring.gpg] https://example.com/scx stable main",
+    "components": ["main"],
+    "signed_by": "/usr/share/keyrings/scx-archive-keyring.gpg"
+  },
+  "tkg": {
+    "id": "tkg",
+    "label": "TKG kernel (source build, no repo)",
+    "url": "https://github.com/Frogging-Family/linux-tkg",
+    "key_url": "https://example.com/tkg.key",
+    "keyring_url_template": "https://example.com/tkg.key",
+    "keyring_path": "/usr/share/keyrings/tkg-archive-keyring.gpg",
+    "signed_by_fingerprint": "placeholder",
+    "url_template": "https://example.com/tkg",
+    "dist_map": {},
+    "sources_line_template": "deb [signed-by=/usr/share/keyrings/tkg-archive-keyring.gpg] https://example.com/tkg stable main",
+    "components": ["main"],
+    "signed_by": "/usr/share/keyrings/tkg-archive-keyring.gpg"
+  }
+}

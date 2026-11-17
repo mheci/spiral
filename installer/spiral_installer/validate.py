@@ -5,10 +5,10 @@ from typing import Any, Iterable, Optional
 
 from .errors import ConfigError
 
-PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9+.\-]+$")
-ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]*$")
-SUBVOL_RE = re.compile(r"^@[a-z0-9_]*$")
-ARCH_RE = re.compile(r"^[a-z0-9]+$")
+PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9+.\-]+\Z")
+ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]*\Z")
+SUBVOL_RE = re.compile(r"^@[a-z0-9_]*\Z")
+ARCH_RE = re.compile(r"^[a-z0-9]+\Z")
 
 
 def fail(context: str, message: str) -> None:

@@ -153,7 +153,7 @@ class PlanTests(unittest.TestCase):
         gpu = nvidia_gpu()
         report, _ = make_disk(gpus=(gpu,), secure_boot=False)
         plan = self.build(
-            InstallChoices(),
+            InstallChoices(driver="nvidia-proprietary"),
             hardware=(report, report.disks[0]),
             resolver=FakeResolver({"nvidia-driver"}),
         )

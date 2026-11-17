@@ -1,0 +1,15 @@
+{
+  "id": "nvidia-cuda",
+  "label": "NVIDIA Proprietary (CUDA repo, cuda-drivers)",
+  "description": "Official NVIDIA CUDA repo proprietary driver via cuda-drivers meta-package. For older GPUs or full proprietary stack.",
+  "vendor": "nvidia",
+  "packages": ["cuda-drivers", "nvidia-settings", "firmware-misc-nonfree"],
+  "required_available": ["cuda-drivers"],
+  "modules": ["nvidia", "nvidia_modeset", "nvidia_drm", "nvidia_uvm"],
+  "requires_headers": true,
+  "secure_boot": "requires_enrollment",
+  "fallback": "nouveau",
+  "status": "conditional",
+  "external_repo": "nvidia-cuda",
+  "notes": "Proprietary variant from CUDA repo. Use nvidia-open-cuda for open modules when hardware allows."
+}

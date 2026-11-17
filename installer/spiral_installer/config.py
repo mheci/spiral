@@ -11,9 +11,11 @@ from .errors import ConfigError
 from .models import CompressionPolicy, Firmware
 from .profiles import ProfileSet, load_profiles
 
-LOCALE_RE = re.compile(r"^[a-z]{2}_[A-Z]{2}\.UTF-8$")
-KEYMAP_RE = re.compile(r"^[a-z0-9][a-z0-9\-]*$")
-TIMEZONE_RE = re.compile(r"^[A-Za-z0-9_+\-]+(/[A-Za-z0-9_+\-]+)*$")
+LOCALE_RE = re.compile(r"^[a-z]{2}_[A-Z]{2}\.UTF-8\Z")
+KEYMAP_RE = re.compile(r"^[a-z0-9][a-z0-9\-]*\Z")
+TIMEZONE_RE = re.compile(r"^[A-Za-z0-9_+\-]+(/[A-Za-z0-9_+\-]+)*\Z")
+LIVE_USERNAME_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}\Z")
+LIVE_HOSTNAME_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
 SWAP_STRATEGIES = ("none", "zram", "partition", "file")
 
 
@@ -69,6 +71,22 @@ class HardwareConfig:
 
 
 @dataclass(frozen=True)
+class ExternalRepo:
+    id: str
+    label: str
+    url: str
+    key_url: Optional[str]
+    keyring_url_template: Optional[str]
+    keyring_path: Optional[str]
+    signed_by_fingerprint: Optional[str]
+    url_template: Optional[str]
+    dist_map: Mapping[str, str]
+    sources_line_template: Optional[str]
+    components: tuple[str, ...]
+    signed_by: Optional[str]
+
+
+@dataclass(frozen=True)
 class InstallerConfig:
     minimum_ram_mib: int
     minimum_disk_gib: int
@@ -106,6 +124,7 @@ class Repository:
     build: BuildConfig
     hardware: HardwareConfig
     profiles: ProfileSet
+    external_repos: Mapping[str, ExternalRepo]
 
     def verify(self) -> None:
         installer = self.installer
@@ -299,10 +318,16 @@ def load_build_config(path: Path) -> BuildConfig:
     epoch = reproducible["source_date_epoch"]
     if not (isinstance(epoch, str) and (epoch == "git" or epoch.isdigit())):
         v.fail(f"{ctx}.reproducible", "source_date_epoch must be 'git' or a Unix timestamp")
+    live_username = v.text(live, "username", f"{ctx}.live")
+    if not LIVE_USERNAME_RE.match(live_username):
+        v.fail(f"{ctx}.live", "live username must be a valid Unix username")
+    live_hostname = v.text(live, "hostname", f"{ctx}.live")
+    if not LIVE_HOSTNAME_RE.match(live_hostname):
+        v.fail(f"{ctx}.live", "live hostname must be a valid single DNS label")
     return BuildConfig(
         name=v.text(data, "name", ctx),
-        live_username=v.text(live, "username", f"{ctx}.live"),
-        live_hostname=v.text(live, "hostname", f"{ctx}.live"),
+        live_username=live_username,
+        live_hostname=live_hostname,
         boot_timeout_seconds=timeout,
         default_boot_entry=default_entry,
         boot_entries=tuple(entries),
@@ -412,12 +437,14 @@ def load_installer_config(path: Path) -> InstallerConfig:
         "autologin",
         "snapshots",
         "btrfs_maintenance",
+        "scx",
+        "scx_scheduler",
     }
     v.check_keys(
         defaults,
         f"{ctx}.defaults",
         default_keys,
-        default_keys - {"snapshots", "btrfs_maintenance"},
+        default_keys - {"snapshots", "btrfs_maintenance", "scx", "scx_scheduler"},
     )
     for key in ("filesystem", "compression", "swap", "kernel", "desktop", "driver", "bootloader", "locale", "keymap", "timezone", "hostname", "username"):
         v.text(defaults, key, f"{ctx}.defaults")
@@ -436,6 +463,14 @@ def load_installer_config(path: Path) -> InstallerConfig:
         v.boolean(defaults, "snapshots", f"{ctx}.defaults")
     if "btrfs_maintenance" in defaults:
         v.boolean(defaults, "btrfs_maintenance", f"{ctx}.defaults")
+    if "scx" in defaults:
+        v.boolean(defaults, "scx", f"{ctx}.defaults")
+    if "scx_scheduler" in defaults:
+        v.text(defaults, "scx_scheduler", f"{ctx}.defaults", choices=("lavd", "rusty", "bpfland", "flash", "p2dq", "rustland", "central", "qmap"))
+    if "scx" not in defaults:
+        defaults["scx"] = True
+    if "scx_scheduler" not in defaults:
+        defaults["scx_scheduler"] = "lavd"
 
     paths = v.mapping(data["paths"], f"{ctx}.paths")
     v.check_keys(
@@ -512,6 +547,37 @@ def load_installer_config(path: Path) -> InstallerConfig:
     )
 
 
+def load_external_repos(path: Path) -> dict[str, ExternalRepo]:
+    if not path.is_file():
+        return {}
+    data = _read_json(path)
+    repos: dict[str, ExternalRepo] = {}
+    for repo_id, entry in data.items():
+        ctx = f"{path} {repo_id}"
+        entry = v.mapping(entry, ctx)
+        v.check_keys(
+            entry,
+            ctx,
+            {"id", "label", "url", "key_url", "keyring_url_template", "keyring_path", "signed_by_fingerprint", "url_template", "dist_map", "sources_line_template", "components", "signed_by"},
+            {"id", "label"},
+        )
+        repos[repo_id] = ExternalRepo(
+            id=v.text(entry, "id", ctx),
+            label=v.text(entry, "label", ctx),
+            url=v.text(entry, "url", ctx, default=""),
+            key_url=v.optional_text(entry, "key_url", ctx),
+            keyring_url_template=v.optional_text(entry, "keyring_url_template", ctx),
+            keyring_path=v.optional_text(entry, "keyring_path", ctx),
+            signed_by_fingerprint=v.optional_text(entry, "signed_by_fingerprint", ctx),
+            url_template=v.optional_text(entry, "url_template", ctx),
+            dist_map=dict(entry.get("dist_map", {})),
+            sources_line_template=v.optional_text(entry, "sources_line_template", ctx),
+            components=tuple(entry.get("components", [])),
+            signed_by=v.optional_text(entry, "signed_by", ctx),
+        )
+    return repos
+
+
 def default_root() -> Path:
     installed = Path("/usr/share/spiral")
     if (installed / "config" / "debian.json").is_file():
@@ -528,6 +594,7 @@ def load_repository(root: Optional[Path] = None, profiles_dir: Optional[Path] = 
         build=load_build_config(root / "config" / "build.json"),
         hardware=load_hardware_config(root / "config" / "hardware.json"),
         profiles=load_profiles(Path(profiles_dir) if profiles_dir else root / "profiles"),
+        external_repos=load_external_repos(root / "config" / "external-repos.json"),
     )
     repo.verify()
     return repo

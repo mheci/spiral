@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MAX_BYTES = 2 * 1024 * 1024
-CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*$")
+CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*\Z")
 
 
 def parse_inrelease(text: str) -> dict[str, str]:

@@ -1,0 +1,15 @@
+{
+  "id": "nvidia-open-cuda",
+  "label": "NVIDIA Open (CUDA repo, open kernel modules + CUDA)",
+  "description": "Official NVIDIA CUDA repo (developer.download.nvidia.com) open kernel modules with CUDA userspace. Turing+ only. Newer branches than Debian (e.g. 590/595).",
+  "vendor": "nvidia",
+  "packages": ["nvidia-open", "nvidia-settings", "firmware-misc-nonfree"],
+  "required_available": ["nvidia-open"],
+  "modules": ["nvidia", "nvidia_modeset", "nvidia_drm", "nvidia_uvm"],
+  "requires_headers": true,
+  "secure_boot": "requires_enrollment",
+  "fallback": "nouveau",
+  "status": "conditional",
+  "external_repo": "nvidia-cuda",
+  "notes": "From NVIDIA CUDA repo. Open modules for Turing and newer. Requires headers and will fall back to Nouveau if unavailable. Subscribe to NVIDIA repo for updates."
+}

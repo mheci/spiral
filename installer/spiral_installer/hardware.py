@@ -305,6 +305,24 @@ def parse_audio_cards(text: str) -> tuple[str, ...]:
     return tuple(cards)
 
 
+def detect_tpm(sys_root: Path = Path("/sys"), dev_root: Path = Path("/dev")) -> bool:
+    """Return True if a TPM2 device appears to be present."""
+    try:
+        # Check sysfs class tpm
+        if (sys_root / "class" / "tpm").is_dir() and any((sys_root / "class" / "tpm").iterdir()):
+            return True
+    except OSError:
+        pass
+    # Check /dev/tpm* character devices (require existence, not necessarily readable)
+    for candidate in (dev_root / "tpm0", dev_root / "tpmrm0"):
+        try:
+            if candidate.exists():
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def detect_secure_boot(sys_root: Path = Path("/sys")) -> tuple[bool, Optional[bool]]:
     efi = (sys_root / "firmware" / "efi").is_dir()
     if not efi:
@@ -404,7 +422,7 @@ def collect_hardware(
                 "-J",
                 "-b",
                 "-o",
-                "NAME,PATH,SIZE,TYPE,MODEL,SERIAL,TRAN,RM,RO,FSTYPE,MOUNTPOINTS,PARTTYPE,LABEL",
+                "NAME,PATH,SIZE,TYPE,MODEL,SERIAL,TRAN,RM,RO,FSTYPE,MOUNTPOINTS,PARTTYPE,LABEL,ID-LINK",
             ],
             timeout=10,
         )
@@ -443,6 +461,11 @@ def collect_hardware(
         (sys_root / "class" / "bluetooth").iterdir()
     )
 
+    try:
+        tpm_present = detect_tpm(sys_root)
+    except Exception:
+        tpm_present = False
+
     return HardwareReport(
         architecture=arch,
         cpu_model=cpu_model,
@@ -457,5 +480,6 @@ def collect_hardware(
         bluetooth=bluetooth,
         audio_controllers=audio,
         usb_controllers=tuple(usb),
+        tpm_present=tpm_present,
         warnings=tuple(warnings),
     )

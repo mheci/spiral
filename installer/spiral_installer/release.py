@@ -9,7 +9,7 @@ from typing import Optional
 from .errors import SpiralError
 from .models import ReleaseInfo
 
-CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*$")
+CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*\Z")
 
 
 def load_release(path: str | Path, codename: Optional[str] = None) -> ReleaseInfo:

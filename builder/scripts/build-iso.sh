@@ -49,6 +49,15 @@ fi
 
 CODENAME=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["codename"])' "$RELEASE_FILE")
 DEBIAN_VERSION=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$RELEASE_FILE")
+# Validate values that end up in filenames and live-build arguments. A
+# malicious or corrupt release file must not inject path traversal or
+# option-like values into the build.
+case "$CODENAME" in
+    ''|*[!a-z0-9]*|*[A-Z]*|/*|*..*) echo "invalid Debian codename in release metadata: $CODENAME" >&2; exit 2 ;;
+esac
+case "$DEBIAN_VERSION" in
+    ''|*/*|*$'\n'*|*$'\r'*) echo "invalid Debian version in release metadata" >&2; exit 2 ;;
+esac
 
 MIRROR=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["mirrors"]["debian"])' "$ROOT/config/debian.json")
 SECURITY=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["mirrors"]["security"])' "$ROOT/config/debian.json")

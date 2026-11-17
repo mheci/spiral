@@ -1,0 +1,13 @@
+{
+  "id": "xanmod",
+  "label": "XanMod (gaming-tuned, latest stable)",
+  "description": "XanMod kernel from deb.xanmod.org, optimized for desktop/gaming with sched_ext. Active support for Debian stable.",
+  "packages": ["linux-image-xanmod-x64v3", "linux-headers-xanmod-x64v3"],
+  "fallback_packages": [],
+  "arches": ["amd64"],
+  "requires_packages_available": ["linux-image-xanmod-x64v3"],
+  "status": "stable",
+  "external_repo": "xanmod",
+  "secure_boot": "requires_enrollment",
+  "notes": "Requires HTTPS signed-by keyring at /usr/share/keyrings/xanmod-archive-keyring.gpg. DKMS modules need headers."
+}

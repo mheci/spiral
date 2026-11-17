@@ -191,8 +191,20 @@ class Installer:
         return value
 
     def _write(self, relative: str, content: str, mode: int = 0o644) -> None:
+        # Refuse to follow symlinks outside the target: a pre-planted symlink
+        # (e.g. from a compromised package) must not redirect writes to the
+        # live system. The target is freshly formatted and checked empty in
+        # preflight, so this is defence in depth.
         path = self.target / relative.lstrip("/")
+        try:
+            resolved_target = self.target.resolve()
+            resolved_parent = path.parent.resolve()
+            resolved_parent.relative_to(resolved_target)
+        except (OSError, ValueError) as exc:
+            raise InstallError(f"refusing to write outside the target: {relative}") from exc
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink():
+            raise InstallError(f"refusing to write through a symlink: {relative}")
         path.write_text(content, encoding="utf-8")
         path.chmod(mode)
 
@@ -380,6 +392,8 @@ class Installer:
             "etc/apt/sources.list",
             commands.render_sources_list(self.repo.debian, self.plan),
         )
+        if getattr(self.plan.software, "external_repos", ()):
+            self._setup_external_repos()
         resolv = Path("/etc/resolv.conf")
         if resolv.is_file():
             shutil.copyfile(resolv, self.target / "etc" / "resolv.conf")
@@ -474,7 +488,15 @@ class Installer:
         if self.plan.encryption.enabled:
             raw_root = partition_path(self.plan.disk.path, self.plan.root_partition.number)
             luks_uuid = self._uuid(raw_root)
-            self._write("etc/crypttab", commands.render_crypttab(luks_uuid, self.plan.encryption.mapper_name))
+            self._write(
+                "etc/crypttab",
+                commands.render_crypttab(
+                    luks_uuid,
+                    self.plan.encryption.mapper_name,
+                    self.plan.encryption.tpm_unlock,
+                    self.plan.encryption.tpm_pcrs,
+                ),
+            )
 
     def _write_system_files(self) -> None:
         user = self.plan.user
@@ -501,12 +523,19 @@ class Installer:
             self._chroot("snapper", "create-config", "/", timeout=300)
             self._chroot("systemctl", "enable", "snapper-timeline.timer", "snapper-cleanup.timer", timeout=120)
         if self.plan.swap.strategy is SwapStrategy.ZRAM:
-            self._write("etc/default/zramswap", "ALGO=zstd\nPERCENT=50\n")
+            percent = int(round(self.repo.installer.zram_fraction * 100))
+            self._write("etc/default/zramswap", f"ALGO=zstd\nPERCENT={percent}\n")
             self._chroot("systemctl", "enable", "zramswap.service", timeout=120)
         if self.plan.software.btrfs_maintenance:
             self._chroot("systemctl", "enable", "btrfs-scrub.timer", timeout=120)
+        if self.plan.encryption.tpm_unlock:
+            self._configure_tpm()
         if user.autologin:
             self._configure_autologin()
+        if getattr(self.plan.software, "scx_enabled", False):
+            self._configure_scx()
+        if self.plan.software.kernel_id == "tkg":
+            self._write_tkg_helper()
         grub_default = self.target / "etc" / "default" / "grub"
         existing = grub_default.read_text(encoding="utf-8") if grub_default.is_file() else ""
         console = "console=tty0 console=ttyS0,115200"
@@ -532,26 +561,329 @@ class Installer:
 
     def _configure_autologin(self) -> None:
         user = self.plan.user
-        desktop = self.repo.profiles.desktop(self.plan.software.desktop_ids[0])
-        session = desktop.session or ""
         manager = self.plan.software.display_manager
+        # Find the desktop that owns the chosen display manager to pick the correct session name
+        # (handles minimal+gnome, gnome+kde, etc.). Falls back to first desktop if needed.
+        desktops = []
+        for did in self.plan.software.desktop_ids:
+            try:
+                desktops.append(self.repo.profiles.desktop(did))
+            except Exception:
+                continue
+        candidate = next((d for d in desktops if d.display_manager == manager), None)
+        if candidate is None and desktops:
+            candidate = desktops[0]
+        session = (candidate.session or "") if candidate else ""
+        # Normalize session names for GDM/SDDM expectations on Debian trixie
+        # GNOME session file is gnome.desktop (or gnome-xorg for X11 fallback)
+        # KDE Plasma session is plasma.desktop (plasmax11) or plasmawayland
         if manager == "gdm3":
-            self._write(
-                "etc/gdm3/daemon.conf",
-                f"[daemon]\nAutomaticLoginEnable = true\nAutomaticLogin = {user.username}\n",
-            )
+            # GDM3 on Debian listens to /etc/gdm3/custom.conf [daemon] section;
+            # daemon.conf is package-managed but we write both for robustness.
+            # GNOME (default) uses session "gnome" which maps to gnome.desktop; GDM picks it automatically
+            # when AutomaticLogin is set, but we explicitly set the session for mixed-desktop installs.
+            gdm_content = f"[daemon]\nAutomaticLoginEnable=true\nAutomaticLogin={user.username}\n"
+            # If we know the session (e.g. gnome) and it is not the default, add it
+            if session and session not in ("gnome",):
+                gdm_content += f"DefaultSession={session}\n"
+            self._write("etc/gdm3/custom.conf", gdm_content)
+            self._write("etc/gdm3/daemon.conf", gdm_content)
+            # Ensure GDM is enabled (packages install it but not necessarily enabled in debootstrap)
+            self._chroot("systemctl", "enable", "gdm3.service", timeout=60, check=False)
+            # GNOME also benefits from AccountsService marking - not strictly required for GDM autologin
+            if self.log:
+                self.log.event("info", "configure", "autologin", f"GDM autologin for {user.username} (session={session or 'gnome'})")
         elif manager == "lightdm":
             self._write(
                 "etc/lightdm/lightdm.conf.d/50-spiral-autologin.conf",
                 f"[Seat:*]\nautologin-user={user.username}\nautologin-user-timeout=0\n",
             )
+            self._chroot("systemctl", "enable", "lightdm.service", timeout=60, check=False)
         elif manager == "sddm":
+            # SDDM (KDE Plasma) expects User and Session in [Autologin]. Session names:
+            # plasma = plasma.desktop (X11), plasmawayland = wayland. Use the desktop profile session.
+            # For KDE, session is "plasma" which correctly resolves to plasma.desktop on Debian.
+            sddm_session = session or "plasma"
             self._write(
                 "etc/sddm.conf.d/50-spiral-autologin.conf",
-                f"[Autologin]\nUser={user.username}\nSession={session}\n",
+                f"[Autologin]\nUser={user.username}\nSession={sddm_session}.desktop\n",
             )
+            # Also ensure SDDM is the default display manager if both GDM and SDDM are present
+            # (happens with gnome+kde). The chosen DM is already the first-found, so enable it.
+            self._chroot("systemctl", "enable", "sddm.service", timeout=60, check=False)
+            if self.log:
+                self.log.event("info", "configure", "autologin", f"SDDM autologin for {user.username} session={sddm_session}")
         else:
             raise InstallError(f"automatic login is not implemented for {manager}")
+
+    def _configure_tpm(self) -> None:
+        """Configure initramfs for TPM2 unlock and attempt enrollment."""
+        if not self.plan.encryption.tpm_unlock:
+            return
+        # Ensure cryptsetup initramfs hook is enabled (required for TPM unlock in initramfs)
+        try:
+            self._write("etc/cryptsetup-initramfs/conf-hook", "CRYPTSETUP=y\n")
+        except Exception:
+            pass
+        # Write a marker with PCR policy for diagnostics
+        self._write("etc/spiral/tpm.json", f'{{"pcrs": "{self.plan.encryption.tpm_pcrs}", "device": "auto"}}\n', mode=0o600)
+        if self.log:
+            self.log.event("info", "configure", "tpm", f"TPM2 unlock configured PCRs={self.plan.encryption.tpm_pcrs}")
+        # Attempt enrollment now (after crypttab is written). Enrollment adds a TPM-bound keyslot
+        # to the LUKS device while keeping the passphrase slot as fallback.
+        raw_root = partition_path(self.plan.disk.path, self.plan.root_partition.number)
+        self._enroll_tpm(raw_root)
+
+    def _enroll_tpm(self, raw_device: str) -> None:
+        if self.secrets.luks_passphrase is None:
+            if self.log:
+                self.log.event("warning", "tpm", "enroll", "no LUKS passphrase available for TPM enrollment; skipping")
+            return
+        # Check for TPM device in the live environment (host) - if missing, we cannot enroll
+        # but the passphrase fallback remains usable.
+        # We check both host and target bind-mounted /dev (same devices after bind mounts)
+        tpm_present = False
+        for candidate in (Path("/dev/tpm0"), Path("/dev/tpmrm0"), self.target / "dev" / "tpm0"):
+            try:
+                if candidate.exists():
+                    tpm_present = True
+                    break
+            except OSError:
+                continue
+        # Also check sysfs if /dev check failed (e.g. permissions)
+        if not tpm_present:
+            try:
+                if Path("/sys/class/tpm").is_dir() and any(Path("/sys/class/tpm").iterdir()):
+                    tpm_present = True
+            except OSError:
+                pass
+        if not tpm_present:
+            if self.log:
+                self.log.event("warning", "tpm", "enroll", "no TPM device found (/dev/tpm0); TPM enrollment skipped, passphrase fallback remains")
+            return
+        pcrs = self.plan.encryption.tpm_pcrs or "7"
+        # Prefer systemd-cryptenroll (Debian trixie, systemd >=252 with TPM2 support)
+        # Fallback to clevis if systemd-cryptenroll is unavailable or fails
+        enroll_success = False
+        # Check if systemd-cryptenroll exists in the target (preferred) or host
+        has_systemd_enroll = False
+        for prefix in (str(self.target), ""):
+            # Use which-like check via chroot or host
+            try:
+                if prefix:
+                    res = self._run(["chroot", str(self.target), "which", "systemd-cryptenroll"], timeout=10, check=False)
+                    if getattr(res, "returncode", 1) == 0:
+                        has_systemd_enroll = True
+                        break
+                else:
+                    if which("systemd-cryptenroll"):
+                        has_systemd_enroll = True
+                        break
+            except Exception:
+                continue
+        if has_systemd_enroll:
+            try:
+                argv = commands.tpm_enroll_command(raw_device, pcrs)
+                # Run inside chroot if available there, otherwise on host (both see same /dev)
+                # Prefer chroot so that the target's systemd version handles its own crypttab semantics
+                # Check if chroot has the binary
+                chroot_has = False
+                try:
+                    chk = self._run(["chroot", str(self.target), "which", "systemd-cryptenroll"], timeout=10, check=False)
+                    chroot_has = getattr(chk, "returncode", 1) == 0
+                except Exception:
+                    chroot_has = False
+                if chroot_has:
+                    self._run(["chroot", str(self.target), *argv], stdin_secret=self.secrets.luks_passphrase, secret_newline=False, timeout=120)
+                else:
+                    self._run(argv, stdin_secret=self.secrets.luks_passphrase, secret_newline=False, timeout=120)
+                enroll_success = True
+                if self.log:
+                    self.log.event("info", "tpm", "enroll", f"TPM2 enrollment succeeded via systemd-cryptenroll PCRs={pcrs}")
+            except Exception as exc:
+                if self.log:
+                    self.log.event("warning", "tpm", "enroll", f"systemd-cryptenroll failed: {exc}; trying clevis fallback")
+        # Fallback: clevis (older but still shipped in Debian)
+        if not enroll_success:
+            try:
+                # Clevis enrollment via clevis luks bind -d <device> tpm2 '{}' requires the device to be unlocked?
+                # Actually clevis luks bind works on the LUKS header directly with passphrase via PIN input.
+                # We check for clevis availability
+                has_clevis = False
+                for prefix in (str(self.target), ""):
+                    try:
+                        if prefix:
+                            res = self._run(["chroot", str(self.target), "which", "clevis"], timeout=10, check=False)
+                            if getattr(res, "returncode", 1) == 0:
+                                has_clevis = True
+                                break
+                        else:
+                            if which("clevis"):
+                                has_clevis = True
+                                break
+                    except Exception:
+                        continue
+                if has_clevis:
+                    # clevis luks bind expects interactive pin; on Debian it can take passphrase via stdin with --key-file=-
+                    # We use the host/target clevis wrapper that supports key file
+                    clevis_argv = ["chroot", str(self.target), "clevis", "luks", "bind", "-d", raw_device, "tpm2", "{}"]
+                    # Check if chroot has clevis, else host
+                    try:
+                        chk = self._run(["chroot", str(self.target), "which", "clevis"], timeout=10, check=False)
+                        if getattr(chk, "returncode", 1) != 0:
+                            clevis_argv = ["clevis", "luks", "bind", "-d", raw_device, "tpm2", "{}"]
+                    except Exception:
+                        clevis_argv = ["clevis", "luks", "bind", "-d", raw_device, "tpm2", "{}"]
+                    self._run(clevis_argv, stdin_secret=self.secrets.luks_passphrase, secret_newline=False, timeout=120)
+                    enroll_success = True
+                    if self.log:
+                        self.log.event("info", "tpm", "enroll", "TPM2 enrollment succeeded via clevis")
+                else:
+                    if self.log:
+                        self.log.event("warning", "tpm", "enroll", "neither systemd-cryptenroll nor clevis found; TPM enrollment skipped")
+            except Exception as exc:
+                if self.log:
+                    self.log.event("warning", "tpm", "enroll", f"clevis enrollment failed: {exc}; passphrase fallback remains")
+        if not enroll_success and self.log:
+            self.log.event("warning", "tpm", "enroll", "TPM enrollment did not succeed; the system will still unlock with the passphrase")
+
+    def _setup_external_repos(self) -> None:
+        for repo_id in getattr(self.plan.software, "external_repos", ()):
+            repo = self.repo.external_repos.get(repo_id)
+            if repo is None:
+                if self.log:
+                    self.log.event("warning", "external-repo", repo_id, f"unknown external repo {repo_id!r}, skipping")
+                continue
+            try:
+                self._setup_single_external_repo(repo)
+                if self.log:
+                    self.log.event("info", "external-repo", repo_id, f"configured {repo.label}")
+            except Exception as exc:
+                if self.log:
+                    self.log.event("warning", "external-repo", repo_id, f"failed to configure {repo.label}: {exc}")
+                continue
+
+    def _setup_single_external_repo(self, repo) -> None:
+        codename = self.plan.release.codename
+        dist = (repo.dist_map or {}).get(codename, codename)
+        if repo.id == "nvidia-cuda" and getattr(repo, "keyring_url_template", None):
+            keyring_url = repo.keyring_url_template.replace("{dist}", dist).replace("{codename}", codename)
+            self._run(["chroot", str(self.target), "mkdir", "-p", "/usr/share/keyrings"], timeout=30, check=False)
+            deb_tmp = self.target / "tmp" / "cuda-keyring.deb"
+            deb_tmp.parent.mkdir(parents=True, exist_ok=True)
+            fetched = False
+            for cmd in (
+                ["chroot", str(self.target), "curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", "/tmp/cuda-keyring.deb"],
+                ["curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", str(deb_tmp)],
+            ):
+                try:
+                    self._run(cmd, timeout=60, check=False)
+                    if (self.target / "tmp" / "cuda-keyring.deb").exists() or deb_tmp.exists():
+                        fetched = True
+                        break
+                except Exception:
+                    continue
+            if fetched:
+                try:
+                    self._run(["chroot", str(self.target), "dpkg", "-i", "/tmp/cuda-keyring.deb"], timeout=60, check=False)
+                except Exception:
+                    pass
+            sources_line = (repo.sources_line_template or "").replace("{dist}", dist).replace("{codename}", codename)
+            if sources_line:
+                self._write(f"etc/apt/sources.list.d/{repo.id}.list", sources_line + "\n")
+            return
+        if getattr(repo, "key_url", None) and getattr(repo, "keyring_path", None):
+            keyring_path = repo.keyring_path
+            target_keyring = self.target / keyring_path.lstrip("/")
+            target_keyring.parent.mkdir(parents=True, exist_ok=True)
+            key_url = repo.key_url
+            tmp_key = self.target / "tmp" / f"{repo.id}.key"
+            tmp_key.parent.mkdir(parents=True, exist_ok=True)
+            fetched = False
+            for cmd in (
+                ["chroot", str(self.target), "curl", "-fsSL", key_url, "-o", f"/tmp/{repo.id}.key"],
+                ["curl", "-fsSL", key_url, "-o", str(tmp_key)],
+            ):
+                try:
+                    res = self._run(cmd, timeout=60, check=False)
+                    if getattr(res, "returncode", 1) == 0:
+                        fetched = True
+                        break
+                except Exception:
+                    continue
+            if fetched:
+                src = f"/tmp/{repo.id}.key"
+                dst = keyring_path
+                try:
+                    self._run(["chroot", str(self.target), "gpg", "--dearmor", "-o", dst, src], timeout=30, check=False)
+                except Exception:
+                    try:
+                        host_src = str(self.target / src.lstrip("/")) if src.startswith("/") else str(tmp_key)
+                        self._run(["gpg", "--dearmor", "-o", str(target_keyring), host_src], timeout=30, check=False)
+                    except Exception:
+                        pass
+        sources_line = (repo.sources_line_template or "").replace("{codename}", codename).replace("{dist}", dist)
+        if sources_line:
+            self._write(f"etc/apt/sources.list.d/{repo.id}.list", sources_line + "\n")
+
+    def _configure_scx(self) -> None:
+        scheduler = getattr(self.plan.software, "scx_scheduler", "lavd") or "lavd"
+        sched_bin = f"scx_{scheduler}"
+        try:
+            self._write("etc/default/scx", f'SCX_SCHEDULER={sched_bin}\n')
+        except Exception:
+            pass
+        try:
+            (self.target / "etc" / "scx_loader").mkdir(parents=True, exist_ok=True)
+            config = (
+                f'default_sched = "{sched_bin}"\n'
+                f'default_mode = "Auto"\n'
+                f'\n'
+                f'[scheds.{sched_bin}]\n'
+                f'auto_mode = []\n'
+                f'gaming_mode = ["--performance"]\n'
+                f'lowlatency_mode = ["--performance"]\n'
+                f'powersave_mode = ["--powersave"]\n'
+                f'server_mode = []\n'
+            )
+            self._write("etc/scx_loader/config.toml", config)
+            self._write("etc/scx_loader.toml", config)
+        except Exception:
+            pass
+        for svc in ("scx_loader.service", "scx.service"):
+            try:
+                self._run(["chroot", str(self.target), "systemctl", "enable", svc], timeout=30, check=False)
+                if self.log:
+                    self.log.event("info", "configure", "scx", f"enabled {svc} with {sched_bin}")
+                break
+            except Exception:
+                continue
+        try:
+            self._write("etc/spiral/scx.json", f'{{\"enabled\": true, \"scheduler\": \"{scheduler}\", \"binary\": \"{sched_bin}\"}}\n')
+        except Exception:
+            pass
+
+    def _write_tkg_helper(self) -> None:
+        script = """#!/bin/bash
+set -e
+echo "TKG kernel selected but no binary packages exist. Building from source..."
+echo "See https://github.com/Frogging-Family/linux-tkg"
+if [ "$(id -u)" -ne 0 ]; then echo "Run as root"; exit 1; fi
+apt-get update
+apt-get install -y git build-essential libncurses-dev bison flex libssl-dev libelf-dev dwarves bc
+rm -rf /usr/src/linux-tkg
+git clone https://github.com/Frogging-Family/linux-tkg.git /usr/src/linux-tkg
+cd /usr/src/linux-tkg
+cp customization.cfg customization.cfg.orig
+sed -i 's/^_distro=""/_distro="Debian"/' customization.cfg || true
+./install.sh install
+echo "TKG build finished. Reboot and select TKG kernel in GRUB."
+"""
+        try:
+            self._write("usr/local/sbin/tkg-build.sh", script, mode=0o755)
+            self._write("etc/spiral/tkg.txt", "TKG kernel requires manual build via /usr/local/sbin/tkg-build.sh\n")
+        except Exception:
+            pass
 
     def _remove_policy_rc(self) -> None:
         policy = self.target / "usr" / "sbin" / "policy-rc.d"

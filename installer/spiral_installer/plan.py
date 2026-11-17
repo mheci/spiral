@@ -32,8 +32,9 @@ from .models import (
 from .profiles import DesktopProfile, DriverProfile, FilesystemProfile, KernelProfile, ProfileSet
 from .util import dedupe, human_bytes
 
-USERNAME_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}$")
-HOSTNAME_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+USERNAME_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,31}\Z")
+HOSTNAME_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\Z")
+TPM_PCRS_RE = re.compile(r"^[0-9]+(?:,[0-9]+)*\Z")
 RESERVED_USERS = {"root", "daemon", "bin", "sys", "sync", "nobody", "systemd-network", "systemd-resolve"}
 MIN_ROOT_MIB = 5120
 
@@ -53,12 +54,16 @@ class InstallChoices:
     compression_level: Optional[int] = None
     swap: Optional[str] = None
     encryption: bool = False
+    tpm_unlock: Optional[bool] = None
+    tpm_pcrs: Optional[str] = None
     kernel: Optional[str] = None
     desktops: Optional[tuple[str, ...]] = None
     driver: Optional[str] = None
     package_groups: tuple[str, ...] = ()
     snapshots: Optional[bool] = None
     btrfs_maintenance: Optional[bool] = None
+    scx: Optional[bool] = None
+    scx_scheduler: Optional[str] = None
     username: Optional[str] = None
     full_name: Optional[str] = None
     hostname: Optional[str] = None
@@ -87,10 +92,25 @@ class InstallChoices:
             if not isinstance(groups, list) or any(not isinstance(item, str) for item in groups):
                 raise ValidationError("'package_groups' must be an array of group ids")
             values["package_groups"] = tuple(groups)
-        for key in ("encryption", "autologin", "offline", "snapshots", "btrfs_maintenance"):
+        for key in ("encryption", "tpm_unlock", "autologin", "offline", "snapshots", "btrfs_maintenance", "scx"):
             if key in values and not isinstance(values[key], bool):
                 raise ValidationError(f"'{key}' must be a boolean")
+        scx_sched = values.get("scx_scheduler")
+        if scx_sched is not None and not isinstance(scx_sched, str):
+            raise ValidationError("'scx_scheduler' must be a string")
+        if isinstance(scx_sched, str) and scx_sched and scx_sched not in ("lavd", "rusty", "bpfland", "flash", "p2dq", "rustland", "central", "qmap"):
+            raise ValidationError(f"unknown scx scheduler {scx_sched!r}")
+        tpm_pcrs = values.get("tpm_pcrs")
+        if tpm_pcrs is not None and not isinstance(tpm_pcrs, str):
+            raise ValidationError("'tpm_pcrs' must be a string")
+        if isinstance(tpm_pcrs, str) and tpm_pcrs:
+            if not TPM_PCRS_RE.match(tpm_pcrs):
+                raise ValidationError("'tpm_pcrs' must be comma-separated PCR numbers (0-23), e.g. '7'")
+            for part in tpm_pcrs.split(","):
+                if not part.isdigit() or not 0 <= int(part) <= 23:
+                    raise ValidationError(f"PCR {part!r} out of range 0-23")
         for key in (
+            "scx_scheduler",
             "disk",
             "filesystem",
             "layout",
@@ -158,6 +178,32 @@ class PlanBuilder:
     def _default_bool(self, key: str) -> bool:
         return bool(self.repo.installer.defaults.get(key, False))
 
+    def _default_scx(self, choices: InstallChoices) -> tuple[bool, str]:
+        scx = choices.scx if choices.scx is not None else self._default_bool("scx")
+        scheduler = choices.scx_scheduler or self.repo.installer.defaults.get("scx_scheduler", "lavd")
+        if scheduler not in ("lavd", "rusty", "bpfland", "flash", "p2dq", "rustland", "central", "qmap"):
+            raise ValidationError(f"unknown SCX scheduler {scheduler!r}")
+        return bool(scx), scheduler
+
+    def _external_repos_for(self, kernel: "KernelProfile", driver: dict, group_ids: Sequence[str], scx_enabled: bool) -> tuple[str, ...]:
+        repos: list[str] = []
+        if getattr(kernel, "external_repo", None):
+            repos.append(kernel.external_repo)  # type: ignore
+        if driver.get("external_repo"):
+            repos.append(driver["external_repo"])
+        for gid in group_ids:
+            try:
+                grp = self.repo.profiles.package_group(gid)
+                if getattr(grp, "external_repo", None):
+                    repos.append(grp.external_repo)  # type: ignore
+            except Exception:
+                continue
+        if scx_enabled:
+            if "scx" in self.repo.external_repos:
+                if "scx" not in repos:
+                    repos.append("scx")
+        return tuple(dedupe(repos))
+
     def _missing(self, packages: Sequence[str]) -> list[str]:
         if self.resolver is None:
             return []
@@ -183,6 +229,25 @@ class PlanBuilder:
 
         filesystem = self.repo.profiles.filesystem(choices.filesystem or self._default("filesystem"))
         encryption = bool(choices.encryption)
+        tpm_unlock = bool(choices.tpm_unlock) if choices.tpm_unlock is not None else False
+        tpm_pcrs = choices.tpm_pcrs or "7"
+        if tpm_pcrs:
+            if not TPM_PCRS_RE.match(tpm_pcrs):
+                raise ValidationError(f"invalid TPM PCRs {tpm_pcrs!r}; use comma-separated 0-23 like '7'")
+            for part in tpm_pcrs.split(","):
+                if not 0 <= int(part) <= 23:
+                    raise ValidationError(f"TPM PCR {part!r} out of range 0-23")
+        if tpm_unlock and not encryption:
+            raise ValidationError("TPM unlock requires encryption to be enabled")
+        if tpm_unlock and self.hardware.firmware is not Firmware.UEFI:
+            raise ValidationError("TPM unlock requires UEFI firmware")
+        if tpm_unlock and self.hardware.firmware is Firmware.UEFI and not getattr(self.hardware, "tpm_present", False):
+            self._warn(
+                "tpm-not-detected",
+                "TPM unlock was requested but no TPM device was detected. The install will continue; "
+                "enrollment will be skipped if no TPM is present at install time.",
+                Severity.WARNING,
+            )
         if encryption and not filesystem.supports_encryption:
             raise ValidationError(f"{filesystem.label} does not support encryption")
 
@@ -284,6 +349,23 @@ class PlanBuilder:
             snapshots,
             maintenance,
         )
+        if tpm_unlock:
+            # Add TPM2 unlock packages to the target. systemd already provides systemd-cryptenroll;
+            # tpm2-tools is needed for diagnostics and clevis provides a fallback unlock path.
+            # We use replace to keep SoftwarePlan immutable while extending packages.
+            from dataclasses import replace as _replace
+            tpm_packages = ("tpm2-tools", "clevis", "clevis-tpm2", "clevis-luks", "clevis-initramfs")
+            # Extend packages list with TPM packages, deduped
+            new_packages = tuple(dict.fromkeys(list(software.packages) + list(tpm_packages)))
+            software = _replace(software, packages=new_packages)
+            # Also add a warning about required hardware presence at install time
+            # (the build warning about missing TPM already emitted near the top)
+            if not getattr(self.hardware, "tpm_present", False):
+                self._warn(
+                    "tpm-hardware-missing-at-plan",
+                    "TPM2 unlock requested but hardware probe found no TPM device. Enrollment will be attempted at install time; if no TPM is present the passphrase fallback remains.",
+                    Severity.WARNING,
+                )
         user = self._user(choices, software)
         locale = self._locale(choices)
 
@@ -294,6 +376,42 @@ class PlanBuilder:
                 "and its data are unrecoverable.",
                 Severity.CRITICAL,
             )
+            if tpm_unlock:
+                self._warn(
+                    "tpm-unlock-enabled",
+                    "Automatic TPM2 unlock is enabled. The disk will unlock without a passphrase when the TPM PCRs match. "
+                    "Physical access with PCR-matched firmware can bypass the passphrase; keep the recovery passphrase safe.",
+                    Severity.WARNING,
+                )
+                if user.autologin:
+                    self._warn(
+                        "tpm-and-autologin-unattended",
+                        "TPM unlock and automatic login are both enabled. The system will boot to the desktop without any authentication. "
+                        "Anyone with physical access can use the session.",
+                        Severity.CRITICAL,
+                    )
+                # If Secure Boot is disabled, TPM binding to PCR 7 is weaker
+                if not self.hardware.secure_boot:
+                    self._warn(
+                        "tpm-without-secure-boot",
+                        "TPM unlock is enabled without Secure Boot. PCR 7 binding is less effective when Secure Boot is disabled. "
+                        "Consider enabling Secure Boot in firmware.",
+                        Severity.INFO,
+                    )
+        if user.autologin:
+            self._warn(
+                "autologin-enabled",
+                "Automatic login is enabled. The desktop session will start without a password; anyone with physical access can use the account.",
+                Severity.WARNING,
+            )
+            # GNOME/KDE specific notes
+            dm = software.display_manager
+            if dm not in ("gdm3", "sddm", "lightdm"):
+                self._warn(
+                    "autologin-unsupported-desktop",
+                    f"Automatic login is enabled but the display manager {dm!r} does not provide a tested autologin path. GNOME (gdm3) and KDE Plasma (sddm) are the validated targets.",
+                    Severity.WARNING,
+                )
         if swap_strategy is SwapStrategy.FILE:
             self._warn(
                 "swapfile-resume",
@@ -360,7 +478,7 @@ class PlanBuilder:
             subvolumes=subvolumes,
             compression=compression,
             swap=SwapPlan(strategy=swap_strategy, size_mib=swap_mib),
-            encryption=EncryptionPlan(enabled=encryption),
+            encryption=EncryptionPlan(enabled=encryption, tpm_unlock=tpm_unlock, tpm_pcrs=tpm_pcrs),
             boot=boot,
             software=software,
             user=user,
@@ -506,7 +624,7 @@ class PlanBuilder:
             )
 
         desktops = self._desktop_selection(choices)
-        display_manager = desktops[0].display_manager
+        display_manager = next((d.display_manager for d in desktops if d.display_manager), None)
         desktop_packages: list[str] = []
         for desktop in desktops:
             desktop_packages.extend(desktop.packages)
@@ -546,11 +664,23 @@ class PlanBuilder:
                 driver_packages.append(headers)
             driver_required.append(headers)
 
+        scx_enabled, scx_scheduler = self._default_scx(choices)
+        scx_group = "scx" if scx_enabled else None
         group_ids = dedupe(
             list(self.repo.installer.default_groups)
             + list(choices.package_groups)
             + list(kernel.package_groups)
+            + ([scx_group] if scx_group else [])
         )
+        for gid in list(group_ids):
+            try:
+                grp = profiles.package_group(gid)
+                if getattr(grp, "external_repo", None) and choices.offline:
+                    raise ValidationError(f"offline install cannot use external package group '{gid}'")
+            except Exception:
+                if isinstance(Exception, ValidationError):
+                    raise
+                continue
         group_packages: list[str] = []
         foreign_arches: list[str] = []
         required: list[str] = list(kernel_packages) + list(desktop_packages) + driver_required
@@ -590,6 +720,30 @@ class PlanBuilder:
         else:
             extra_required.extend(["grub-pc"])
 
+        external_repos = self._external_repos_for(kernel, driver, group_ids, scx_enabled)
+        if external_repos:
+            self._warn(
+                "external-repository-enabled",
+                f"External repositories will be configured: {', '.join(external_repos)}. They are fetched over HTTPS with signed-by keyrings and are not part of Debian archive verification.",
+                Severity.WARNING,
+            )
+            if choices.offline:
+                raise ValidationError(f"offline install cannot use external repositories: {', '.join(external_repos)}")
+
+        if scx_enabled:
+            kernel_has_scx = getattr(kernel, "external_repo", None) in ("xanmod", "liquorix", "tkg") or kernel.id in ("xanmod", "xanmod-lts", "liquorix", "tkg")
+            if not kernel_has_scx and kernel.id == "standard":
+                self._warn(
+                    "scx-standard-kernel",
+                    "SCX schedulers are enabled by default (lavd) but the standard Debian kernel may not have CONFIG_SCHED_CLASS_EXT=y on trixie (see Debian bug #1102639). XanMod or Liquorix kernels provide sched_ext. The SCX service will start but fall back to the default scheduler if the kernel lacks support.",
+                    Severity.WARNING,
+                )
+            self._warn(
+                "scx-enabled",
+                f"SCX extendable scheduler is enabled with scheduler '{scx_scheduler}' (default lavd per request). Managed via scx_loader (preferred) or scx.service; falls back to kernel default if not available.",
+                Severity.INFO,
+            )
+
         all_packages = dedupe(
             list(kernel_packages)
             + list(fallback_packages)
@@ -602,8 +756,38 @@ class PlanBuilder:
         )
         required = dedupe(required + extra_required)
         if self.resolver is not None:
+            external_packages: set[str] = set()
+            if external_repos:
+                if getattr(kernel, "external_repo", None):
+                    external_packages.update(kernel_packages)
+                if driver.get("external_repo"):
+                    external_packages.update(driver_packages)
+                for gid in group_ids:
+                    try:
+                        grp = profiles.package_group(gid)
+                        if getattr(grp, "external_repo", None):
+                            external_packages.update(grp.packages)
+                            external_packages.update(grp.required_available)
+                    except Exception:
+                        continue
+                if scx_enabled:
+                    try:
+                        scx_grp = profiles.package_group("scx")
+                        external_packages.update(scx_grp.packages)
+                    except Exception:
+                        pass
             missing = set(self._missing(all_packages))
-            fatal = sorted(missing.intersection(required))
+            external_missing = missing.intersection(external_packages)
+            if external_missing:
+                self._warn(
+                    "external-packages-unverified",
+                    f"External repository packages were not found in Debian archive check (will be resolved after repo setup): {', '.join(sorted(external_missing))}",
+                    Severity.INFO,
+                )
+                missing = missing.difference(external_missing)
+                fatal = sorted(missing.intersection(required))
+            else:
+                fatal = sorted(missing.intersection(required))
             if fatal:
                 raise ValidationError(
                     "required packages are unavailable on Debian "
@@ -636,6 +820,12 @@ class PlanBuilder:
 
         if driver["note"]:
             self._warn("secure-boot-driver", driver["note"], driver["severity"])
+        if driver.get("external_repo") == "nvidia-cuda":
+            self._warn(
+                "nvidia-cuda-repo",
+                "NVIDIA packages will be installed from the official NVIDIA CUDA repository (developer.download.nvidia.com) with signed-by keyring. Open kernel modules (nvidia-open) are preferred for Turing+; they require linux-headers and MOK enrollment under Secure Boot.",
+                Severity.INFO,
+            )
 
         return SoftwarePlan(
             kernel_id=kernel.id,
@@ -655,6 +845,9 @@ class PlanBuilder:
             foreign_architectures=tuple(foreign_arches),
             snapshots=snapshots,
             btrfs_maintenance=maintenance,
+            external_repos=tuple(external_repos),
+            scx_enabled=scx_enabled,
+            scx_scheduler=scx_scheduler,
         )
 
     def _driver(self, choices: InstallChoices) -> dict:
@@ -662,7 +855,16 @@ class PlanBuilder:
         nvidia = bool(self.hardware.nvidia_gpus)
         if requested == "auto":
             if nvidia and self.nvidia_supported is not False:
-                selected = self.repo.profiles.driver("nvidia-proprietary")
+                if self.nvidia_package and any(x in self.nvidia_package for x in ("legacy", "tesla", "340", "304")):
+                    selected = self.repo.profiles.driver("nvidia-proprietary")
+                else:
+                    preferred = None
+                    if "nvidia-open-cuda" in self.repo.profiles.drivers:
+                        preferred = self.repo.profiles.driver("nvidia-open-cuda")
+                    if preferred and preferred.vendor == "nvidia":
+                        selected = preferred
+                    else:
+                        selected = self.repo.profiles.driver("nvidia-proprietary")
                 if self.hardware.secure_boot and self.repo.hardware.allow_nouveau_fallback:
                     fallback = self.repo.profiles.driver("nouveau")
                     selected = fallback
@@ -722,9 +924,9 @@ class PlanBuilder:
         note = ""
         severity = Severity.WARNING
         if (
-            selected.id == "nvidia-proprietary"
+            selected.vendor == "nvidia"
             and self.nvidia_package
-            and requested in ("auto", "nvidia-proprietary")
+            and requested in ("auto", "nvidia-proprietary", "nvidia-open-cuda", "nvidia-cuda", "nvidia-open")
         ):
             v.package_name(self.nvidia_package, "nvidia-detect")
             if self.nvidia_package not in packages:
@@ -802,6 +1004,7 @@ class PlanBuilder:
             "headers": profile.requires_headers,
             "note": note,
             "severity": severity,
+            "external_repo": getattr(profile, "external_repo", None),
         }
 
     def _user(self, choices: InstallChoices, software: SoftwarePlan) -> UserPlan:

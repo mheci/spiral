@@ -11,7 +11,7 @@ import sys
 import urllib.request
 from pathlib import Path
 
-CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*$")
+CODENAME_RE = re.compile(r"^[a-z][a-z0-9]*\Z")
 
 
 def fetch(url: str, limit: int = 200 * 1024 * 1024) -> bytes:
@@ -28,9 +28,27 @@ def fetch(url: str, limit: int = 200 * 1024 * 1024) -> bytes:
 
 
 def stable_codename(suite: str) -> str:
-    text = fetch(f"https://deb.debian.org/debian/dists/{suite}/InRelease", 2 * 1024 * 1024).decode(
-        "utf-8", errors="replace"
-    )
+    import subprocess
+    import tempfile
+
+    payload = fetch(f"https://deb.debian.org/debian/dists/{suite}/InRelease", 2 * 1024 * 1024)
+    # Verify the signature before trusting the codename, matching the build
+    # path in discover-debian.py. Without this, a compromised mirror could
+    # redirect the package check to a different release.
+    with tempfile.NamedTemporaryFile("wb", suffix="InRelease", delete=False) as handle:
+        handle.write(payload)
+        temp_path = Path(handle.name)
+    try:
+        result = subprocess.run(
+            ["gpgv", "--keyring", "/usr/share/keyrings/debian-archive-keyring.gpg", str(temp_path)],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Debian InRelease signature verification failed: {result.stderr}")
+    finally:
+        temp_path.unlink(missing_ok=True)
+    text = payload.decode("utf-8", errors="replace")
     match = re.search(r"^Codename:\s*(\S+)$", text, re.MULTILINE)
     if not match or not CODENAME_RE.match(match.group(1)):
         raise RuntimeError("could not read the Debian codename from InRelease")

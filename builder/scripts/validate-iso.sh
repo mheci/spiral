@@ -100,6 +100,12 @@ if [ -n "$ssh_material" ]; then
     printf '%s\n' "$ssh_material" >&2
     exit 1
 fi
+host_keys=$(grep -E '(^|/)(squashfs-root/)?etc/ssh/ssh_host_.*_key$' "$TMP/squash-list.txt" || true)
+if [ -n "$host_keys" ]; then
+    echo "SSH host private keys found in the live image:" >&2
+    printf '%s\n' "$host_keys" >&2
+    exit 1
+fi
 
 if xorriso -osirrox on -indev "$ISO" -extract /boot/grub/grub.cfg "$TMP/grub.cfg" >/dev/null 2>&1; then
     for label in "Start Spiral" "Safe Graphics" "Troubleshooting"; do

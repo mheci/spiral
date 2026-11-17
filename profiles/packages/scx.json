@@ -1,0 +1,14 @@
+{
+  "id": "scx",
+  "label": "SCX sched_ext schedulers (lavd default)",
+  "category": "software",
+  "description": "SCX extendable scheduler userspace: scx, scx-tools, scx-loader, scx-scheds with lavd as default. Enabled by default.",
+  "packages": ["scx", "scx-tools", "scx-loader", "scx-scheds"],
+  "required_available": ["scx"],
+  "architectures": [],
+  "default": false,
+  "offline": false,
+  "status": "stable",
+  "external_repo": "scx",
+  "notes": "Requires kernel with CONFIG_SCHED_CLASS_EXT=y (XanMod/Liquorix or 6.14+). Falls back to default scheduler if kernel lacks support."
+}

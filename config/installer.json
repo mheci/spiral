@@ -20,7 +20,9 @@
     "username": "spiral",
     "autologin": false,
     "snapshots": false,
-    "btrfs_maintenance": false
+    "btrfs_maintenance": false,
+    "scx": true,
+    "scx_scheduler": "lavd"
   },
   "paths": {
     "target": "/target",

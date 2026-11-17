@@ -1,0 +1,13 @@
+{
+  "id": "liquorix",
+  "label": "Liquorix (Zen-tuned, low-latency)",
+  "description": "Liquorix kernel from liquorix.net, Zen patches, active Debian support. Provides sched_ext.",
+  "packages": ["linux-image-liquorix-amd64", "linux-headers-liquorix-amd64"],
+  "fallback_packages": [],
+  "arches": ["amd64"],
+  "requires_packages_available": ["linux-image-liquorix-amd64"],
+  "status": "stable",
+  "external_repo": "liquorix",
+  "secure_boot": "requires_enrollment",
+  "notes": "Signed-by keyring at /usr/share/keyrings/liquorix-archive-keyring.gpg"
+}

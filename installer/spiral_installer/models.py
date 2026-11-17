@@ -153,6 +153,7 @@ class HardwareReport:
     bluetooth: bool = False
     audio_controllers: tuple[str, ...] = ()
     usb_controllers: tuple[str, ...] = ()
+    tpm_present: bool = False
     warnings: tuple[str, ...] = ()
 
     @property
@@ -227,6 +228,8 @@ class EncryptionPlan:
     mapper_name: str = "cryptroot"
     luks_type: str = "luks2"
     pbkdf: str = "argon2id"
+    tpm_unlock: bool = False
+    tpm_pcrs: str = "7"
 
 
 @dataclass(frozen=True)
@@ -278,6 +281,9 @@ class SoftwarePlan:
     foreign_architectures: tuple[str, ...]
     snapshots: bool = False
     btrfs_maintenance: bool = False
+    external_repos: tuple[str, ...] = ()
+    scx_enabled: bool = False
+    scx_scheduler: str = "lavd"
 
 
 @dataclass(frozen=True)
@@ -371,6 +377,8 @@ class InstallPlan:
                 "enabled": self.encryption.enabled,
                 "type": self.encryption.luks_type,
                 "mapper": self.encryption.mapper_name,
+                "tpm_unlock": self.encryption.tpm_unlock,
+                "tpm_pcrs": self.encryption.tpm_pcrs,
             },
             "boot": {
                 "mode": self.boot.mode.value,
@@ -383,6 +391,8 @@ class InstallPlan:
             "display_manager": self.software.display_manager,
             "package_groups": list(self.software.package_groups),
             "packages": list(self.software.packages),
+            "external_repos": list(self.software.external_repos),
+            "scx": {"enabled": self.software.scx_enabled, "scheduler": self.software.scx_scheduler},
             "user": {
                 "username": self.user.username,
                 "hostname": self.user.hostname,

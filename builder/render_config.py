@@ -32,8 +32,13 @@ def render_grub(repo, platform: str) -> str:
     for index, entry in enumerate(repo.build.boot_entries):
         if entry.memtest:
             continue
-        label = entry.label.replace("'", "")
+        # GRUB config is not shell-escaped; strip characters that could break
+        # out of the menuentry line or inject extra GRUB commands. The build
+        # config is trusted, but a corrupt value must not produce a broken
+        # or malicious bootloader menu.
+        label = entry.label.replace("'", "").replace("\n", " ").replace("\r", " ").strip()
         append = " ".join(part for part in (entry.append.strip(),) if part)
+        append = append.replace("\n", " ").replace("\r", " ").replace("'", "").replace('"', "").replace("}", "").replace("{", "")
         lines.extend(
             [
                 f"menuentry '{label}' --id spiral-{entry.id} {{",

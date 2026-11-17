@@ -31,15 +31,23 @@ class Secret:
         return REDACTED
 
 
+def _redact_value(value: object) -> object:
+    if isinstance(value, Secret):
+        return REDACTED
+    if isinstance(value, dict):
+        return redact_fields(value)
+    if isinstance(value, (list, tuple)):
+        return type(value)(_redact_value(item) for item in value)
+    return value
+
+
 def redact_fields(fields: dict) -> dict:
     clean = {}
     for key, value in fields.items():
         if any(marker in key.lower() for marker in _SENSITIVE_KEYS):
             clean[key] = REDACTED
-        elif isinstance(value, Secret):
-            clean[key] = REDACTED
         else:
-            clean[key] = value
+            clean[key] = _redact_value(value)
     return clean
 
 

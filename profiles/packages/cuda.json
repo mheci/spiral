@@ -1,0 +1,14 @@
+{
+  "id": "cuda",
+  "label": "CUDA toolkit",
+  "category": "software",
+  "description": "NVIDIA CUDA toolkit and development libraries from the official CUDA repo.",
+  "packages": ["cuda-toolkit", "cuda-drivers"],
+  "required_available": ["cuda-toolkit"],
+  "architectures": [],
+  "default": false,
+  "offline": false,
+  "status": "conditional",
+  "external_repo": "nvidia-cuda",
+  "notes": "Requires NVIDIA GPU and external repo. Install via official CUDA network repo."
+}

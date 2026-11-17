@@ -44,8 +44,11 @@ Categories=System;Installer;
 EOF
 
 LIVE_USER=$(python3 - <<'PY'
-import json
-print(json.load(open("/usr/share/spiral/build-info.json"))["live_username"])
+import json, re, sys
+user = json.load(open("/usr/share/spiral/build-info.json"))["live_username"]
+if not re.match(r"^[a-z_][a-z0-9_-]{0,31}\Z", user):
+    sys.exit(f"invalid live username in build-info.json: {user!r}")
+print(user)
 PY
 )
 {

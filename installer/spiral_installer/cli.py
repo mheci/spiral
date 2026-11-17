@@ -31,6 +31,7 @@ from .models import (
 from .packages import AptPackageResolver, OfflinePackageResolver
 from .plan import Approval, InstallChoices, PlanBuilder, confirmation_phrase
 from .release import load_release
+from . import __version__
 from .util import Secret, human_bytes, run_capture, which
 
 STEP_TITLES = (
@@ -266,6 +267,8 @@ class Wizard:
         self._step(7, "Encryption")
         if not self._yes("Encrypt the root filesystem with LUKS2?", default=False):
             self.answers["encryption"] = False
+            self.answers["tpm_unlock"] = False
+            self.answers["tpm_pcrs"] = "7"
             self.luks_passphrase = None
             return
         self.answers["encryption"] = True
@@ -274,18 +277,60 @@ class Wizard:
         if self.answers.get("swap") == "partition":
             _say("An unencrypted swap partition would leak data. Switching to ZRAM.")
             self.answers["swap"] = "zram"
+        # TPM2 automatic unlock (UEFI only, best with Secure Boot)
+        tpm_available = getattr(self.hardware, "tpm_present", False)
+        if self.hardware.firmware.value == "uefi":
+            _say("")
+            _say("TPM2 can unlock the disk automatically at boot without a passphrase when the PCRs match.")
+            _say("The passphrase remains as a recovery key. PCR 7 (Secure Boot state) is the default binding.")
+            if not tpm_available:
+                _say("No TPM device was detected on this hardware; enrollment will be attempted but may be skipped.")
+            if self._yes("Enable automatic TPM2 unlock?", default=False):
+                self.answers["tpm_unlock"] = True
+                # Advanced PCR selection: default 7, allow override for advanced users
+                pcrs = self._ask("TPM PCRs to bind (comma-separated 0-23)", "7")
+                # Validate via plan regex (fallback to 7 if invalid)
+                import re as _re
+                if not _re.match(r"^[0-9]+(?:,[0-9]+)*\Z", pcrs):
+                    _say("Invalid PCR list, using default 7")
+                    pcrs = "7"
+                # range check
+                valid = True
+                for part in pcrs.split(","):
+                    if not part.isdigit() or not 0 <= int(part) <= 23:
+                        valid = False
+                if not valid:
+                    _say("PCR values out of range 0-23, using default 7")
+                    pcrs = "7"
+                self.answers["tpm_pcrs"] = pcrs
+            else:
+                self.answers["tpm_unlock"] = False
+                self.answers["tpm_pcrs"] = "7"
+        else:
+            _say("TPM unlock requires UEFI firmware; skipping.")
+            self.answers["tpm_unlock"] = False
+            self.answers["tpm_pcrs"] = "7"
 
     def _kernel(self) -> None:
         self._step(8, "Kernel")
         options = []
         for kernel in sorted(self.repo.profiles.kernels.values(), key=lambda item: item.id):
-            options.append((kernel.id, f"{kernel.label}: {kernel.description}"))
-        self.answers["kernel"] = self._choose("Kernel profile", options, 0)
+            note = " (experimental)" if getattr(kernel, "status", "") == "experimental" else ""
+            extra = " [external repo]" if getattr(kernel, "external_repo", None) else ""
+            options.append((kernel.id, f"{kernel.label}{note}{extra}: {kernel.description}"))
+        default_kernel = self.repo.installer.default_str("kernel")
+        try:
+            default_idx = [k for k, _ in options].index(default_kernel)
+        except ValueError:
+            default_idx = 0
+        self.answers["kernel"] = self._choose("Kernel profile", options, default_idx)
 
     def _recommended_driver(self) -> str:
         if self.hardware.nvidia_gpus:
             if self.hardware.secure_boot:
                 return "nouveau"
+            if "nvidia-open-cuda" in self.repo.profiles.drivers:
+                return "nvidia-open-cuda"
             return "nvidia-proprietary"
         if any(gpu.vendor.value == "amd" for gpu in self.hardware.gpus):
             return "amd"
@@ -333,6 +378,32 @@ class Wizard:
             allowed = set(self.repo.build.offline_package_groups)
             options = [option for option in options if option[0] in allowed]
         self.answers["package_groups"] = self._multi("Additional package groups", options, ())
+        _say("")
+        _say("SCX extendable scheduler (sched_ext) is enabled by default with lavd; it will use XanMod/Liquorix kernels when selected, otherwise falls back to standard.")
+        try:
+            default_scx = self.repo.installer.default_bool("scx")
+        except Exception:
+            default_scx = True
+        self.answers["scx"] = self._yes("Enable SCX scheduler (lavd default)?", default=default_scx)
+        if self.answers["scx"]:
+            schedulers = [
+                ("lavd", "LAVD ( Latency-Aware Virtual Deadline, default )"),
+                ("rusty", "Rusty (Rust, simple)"),
+                ("bpfland", "Bpfland (BPF)"),
+                ("flash", "Flash (low-latency)"),
+                ("p2dq", "p2dq"),
+                ("rustland", "Rustland"),
+                ("central", "Central"),
+                ("qmap", "QMAP"),
+            ]
+            default_sched = self.repo.installer.defaults.get("scx_scheduler", "lavd")
+            try:
+                idx = [s for s, _ in schedulers].index(default_sched)
+            except ValueError:
+                idx = 0
+            self.answers["scx_scheduler"] = self._choose("SCX scheduler", schedulers, idx)
+        else:
+            self.answers["scx_scheduler"] = self.repo.installer.defaults.get("scx_scheduler", "lavd")
 
     def _user(self) -> None:
         self._step(12, "User account")
@@ -345,12 +416,29 @@ class Wizard:
         )
         self.user_password = self._secret("User password")
         desktop_ids = self.answers.get("desktops") or ()
+        # Find first desktop with a display manager (handles minimal+gnome etc.)
         manager = None
-        if desktop_ids:
-            manager = self.repo.profiles.desktop(desktop_ids[0]).display_manager
+        for did in desktop_ids:
+            try:
+                dm = self.repo.profiles.desktop(did).display_manager
+                if dm:
+                    manager = dm
+                    break
+            except Exception:
+                continue
         if manager in ("gdm3", "lightdm", "sddm"):
-            self.answers["autologin"] = self._yes("Automatic login for this user?", default=False)
+            _say("")
+            if manager == "gdm3":
+                _say("GNOME uses GDM3. Automatic login will be configured in /etc/gdm3/custom.conf.")
+            elif manager == "sddm":
+                _say("KDE Plasma uses SDDM. Automatic login will be configured in /etc/sddm.conf.d/.")
+            else:
+                _say("Automatic login will be configured for the selected display manager.")
+            _say("The session will start without a password; anyone with physical access can use it.")
+            self.answers["autologin"] = self._yes("Enable automatic login for this user?", default=False)
         else:
+            if desktop_ids:
+                _say("Automatic login requires a graphical display manager (GNOME/gdm3 or KDE/sddm).")
             self.answers["autologin"] = False
 
     def confirm(self, plan: InstallPlan) -> Approval:
@@ -384,8 +472,18 @@ def print_plan(plan: InstallPlan) -> None:
     for subvolume in plan.subvolumes:
         _say(f"  {subvolume.name:<14} -> {subvolume.mountpoint:<14} {', '.join(subvolume.options)}")
     _say(f"Swap: {plan.swap.strategy.value}" + (f" ({plan.swap.size_mib} MiB)" if plan.swap.size_mib else ""))
-    _say(f"Encryption: {'LUKS2' if plan.encryption.enabled else 'disabled'}")
+    if plan.encryption.enabled:
+        if getattr(plan.encryption, "tpm_unlock", False):
+            _say(f"Encryption: LUKS2 + TPM2 auto-unlock (PCRs {getattr(plan.encryption, 'tpm_pcrs', '7')})")
+        else:
+            _say("Encryption: LUKS2")
+    else:
+        _say("Encryption: disabled")
     _say(f"Kernel: {plan.software.kernel_label} ({plan.software.kernel_id})")
+    if getattr(plan.software, "external_repos", ()):
+        _say(f"External repos: {', '.join(plan.software.external_repos)} (HTTPS signed-by)")
+    if getattr(plan.software, "scx_enabled", False):
+        _say(f"SCX scheduler: {plan.software.scx_scheduler} (scx_loader / scx.service, lavd default)")
     _say(f"Desktop: {', '.join(plan.software.desktop_labels) or 'none'}")
     _say(f"Driver: {plan.software.driver_label}")
     _say(f"Packages: {len(plan.software.packages)}")
@@ -456,7 +554,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--luks-passphrase-file",
         help="file containing the LUKS passphrase (unattended mode, mode 0600)",
     )
-    parser.add_argument("--version", action="version", version="Spiral installer 0.1")
+    parser.add_argument("--version", action="version", version=f"Spiral installer {__version__}")
     return parser
 
 
@@ -466,7 +564,8 @@ def _read_secret_file(path: str, label: str) -> Secret:
         mode = file_path.stat().st_mode & 0o777
         if mode & 0o077:
             raise SpiralError(f"{label} file must not be readable by group or others")
-        value = file_path.read_text(encoding="utf-8").splitlines()[0]
+        lines = file_path.read_text(encoding="utf-8").splitlines()
+        value = lines[0] if lines else ""
     except OSError as exc:
         raise SpiralError(f"cannot read {label} file: {exc}") from exc
     if not value:
@@ -526,7 +625,13 @@ def _offer_diagnostics(log_dir: str) -> None:
     for root in (Path("/media"), Path("/run/media")):
         if not root.is_dir():
             continue
-        for path in root.rglob("*"):
+        # Only check top-level mountpoints; a recursive walk of removable
+        # media can be arbitrarily large and slow the failure path.
+        try:
+            children = list(root.iterdir())
+        except OSError:
+            continue
+        for path in children:
             try:
                 if path.is_dir() and os.path.ismount(path):
                     candidates.append(path)
