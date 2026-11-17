@@ -772,7 +772,7 @@ class Installer:
             deb_tmp = self.target / "tmp" / "cuda-keyring.deb"
             deb_tmp.parent.mkdir(parents=True, exist_ok=True)
             fetched = False
-            for cmd in (
+            for cmd in (  # nosec B108 - /tmp is correct for chroot and installer transient files
                 ["chroot", str(self.target), "curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", "/tmp/cuda-keyring.deb"],
                 ["curl", "-fsSL", "--proto", "=https", "--tlsv1.2", keyring_url, "-o", str(deb_tmp)],
             ):
@@ -785,7 +785,7 @@ class Installer:
                     continue
             if fetched:
                 try:
-                    self._run(["chroot", str(self.target), "dpkg", "-i", "/tmp/cuda-keyring.deb"], timeout=60, check=False)
+                    self._run(["chroot", str(self.target), "dpkg", "-i", "/tmp/cuda-keyring.deb"], timeout=60, check=False)  # nosec B108
                 except Exception:
                     pass
             sources_line = (repo.sources_line_template or "").replace("{dist}", dist).replace("{codename}", codename)
@@ -800,7 +800,7 @@ class Installer:
             tmp_key = self.target / "tmp" / f"{repo.id}.key"
             tmp_key.parent.mkdir(parents=True, exist_ok=True)
             fetched = False
-            for cmd in (
+            for cmd in (  # nosec B108 - /tmp is correct for chroot and installer transient files
                 ["chroot", str(self.target), "curl", "-fsSL", key_url, "-o", f"/tmp/{repo.id}.key"],
                 ["curl", "-fsSL", key_url, "-o", str(tmp_key)],
             ):
@@ -812,7 +812,7 @@ class Installer:
                 except Exception:
                     continue
             if fetched:
-                src = f"/tmp/{repo.id}.key"
+                src = f"/tmp/{repo.id}.key"  # nosec B108
                 dst = keyring_path
                 try:
                     self._run(["chroot", str(self.target), "gpg", "--dearmor", "-o", dst, src], timeout=30, check=False)

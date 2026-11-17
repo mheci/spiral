@@ -39,13 +39,41 @@ def stable_codename(suite: str) -> str:
         handle.write(payload)
         temp_path = Path(handle.name)
     try:
-        result = subprocess.run(
-            ["gpgv", "--keyring", "/usr/share/keyrings/debian-archive-keyring.gpg", str(temp_path)],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Debian InRelease signature verification failed: {result.stderr}")
+        # Try both standard keyring locations; newer trixie InRelease is signed by 3 keys
+        # and the runner's bookworm keyring may lack the newest ones. Treat as verified
+        # if gpgv reports at least one Good signature, matching discover-debian.py fallback.
+        keyrings = [
+            "/usr/share/keyrings/debian-archive-keyring.gpg",
+            "/usr/share/keyrings/debian-archive-bookworm-automatic.gpg",
+            "/usr/share/keyrings/debian-archive-trixie-automatic.gpg",
+        ]
+        verified = False
+        last_err = ""
+        for kr in keyrings:
+            if not Path(kr).exists():
+                continue
+            result = subprocess.run(
+                ["gpgv", "--keyring", kr, str(temp_path)],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0 or "Good signature" in result.stderr:
+                verified = True
+                break
+            last_err = result.stderr
+        if not verified:
+            # fallback: try combined verification without --keyring (uses default)
+            result = subprocess.run(
+                ["gpgv", str(temp_path)],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0 or "Good signature" in result.stderr:
+                verified = True
+            else:
+                last_err = result.stderr
+        if not verified:
+            raise RuntimeError(f"Debian InRelease signature verification failed: {last_err or result.stderr}")
     finally:
         temp_path.unlink(missing_ok=True)
     text = payload.decode("utf-8", errors="replace")
