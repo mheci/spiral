@@ -54,5 +54,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+      - name: Install Debian archive keyring
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq debian-archive-keyring
       - name: Check every package against Debian Stable
         run: python3 builder/scripts/check-packages.py --root .
